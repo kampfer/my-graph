@@ -156,9 +156,13 @@ export default class NetworkGraph extends EventEmitter3 {
 
             const sourceId = this._getSourceId(edge);
             const targetId = this._getTargetId(edge);
-            let direction = `${sourceId}-${targetId}`;
+            const direction = `${sourceId}-${targetId}`;
+            const directionAlt = `${targetId}-${sourceId}`;
             if (sames[direction] === undefined) sames[direction] = 0;
-            edge.sameIndex = ++sames[direction];
+            if (sames[directionAlt] === undefined) sames[directionAlt] = 0;
+            // sameIndex需要同时考虑同向和反向边
+            // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
+            edge.sameIndex = ++sames[direction] + sames[directionAlt];
 
         });
 
@@ -431,12 +435,21 @@ NetworkGraph.edgeConstructors = {
         },
         update(selection, datum, graph) {
             // 拖动点时保证箭头的指向正确
+            const startMarker = selection.attr('marker-start');
             if (datum.target.x < datum.source.x) {  // 反
-                selection.attr('marker-start', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
-                selection.attr('marker-end', 'none');
+                if ((!startMarker || startMarker === 'none')) {
+                    // new URL()性能差，直接拼接id
+                    // selection.attr('marker-start', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
+                    selection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+                    selection.attr('marker-end', 'none');
+                }
             } else {    // 正
-                selection.attr('marker-start', 'none');
-                selection.attr('marker-end', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
+                if (!startMarker || startMarker !== 'none') {
+                    selection.attr('marker-start', 'none');
+                    // new URL()性能差，直接拼接id
+                    // selection.attr('marker-end', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
+                    selection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+                }
             }
             selection.attr('d', this.linkArc.bind(this));
         },
