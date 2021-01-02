@@ -1,0 +1,99 @@
+<style>
+    body {
+        padding: none;
+        margin: none;
+    }
+    svg {
+        display: block;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/d3/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/eventemitter3/umd/eventemitter3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dat.gui/build/dat.gui.min.js"></script>
+
+<script type="module">
+    import NetworkGraph from '../src/NetworkGraph/index.js';
+
+    const { GUI } = dat;
+
+    function randomNode(data) {
+        return data.nodes[Math.floor(Math.random() * data.nodes.length)];
+    }
+
+    const random = function (n) { // 生成n位长度的字符串
+        var str = "abcdefghijklmnopqrstuvwxyz0123456789"; // 可以作为常量放到random外面
+        var result = "";
+        for (var i = 0; i < n; i++) {
+            result += str[parseInt(Math.random() * str.length)];
+        }
+        return result;
+    }
+
+    function makeData(nodeCount, edgeCount) {
+        const data = { nodes: [], edges: [] };
+        for (let i = 0; i < nodeCount; i++) {
+            let id = random(10);
+            data.nodes.push({
+                id,
+                label: id
+            });
+        }
+        for (let i = 0; i < edgeCount; i++) {
+            let id = random(10);
+            let target = randomNode(data);
+            let source = randomNode(data);
+            while (source === target) {
+                target = randomNode(data);
+            }
+            data.edges.push({
+                id,
+                label: id,
+                source: source.id,
+                target: target.id,
+            });
+        }
+        return data;
+    }
+
+    const settings = {
+        'node': 2,
+        'edge': 3,
+        'display edge': true,
+        'display edge arrow': true,
+        'display edge label': true,
+        'display node label': true,
+    };
+
+    function init() {
+
+        const graph = new NetworkGraph({
+            container: 'body',
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        function renderRandom() {
+            const data = makeData(settings.node, settings.edge);
+            graph.render(data);
+        }
+
+        const panel = new dat.GUI({ width: 310 });
+
+        const folder1 = panel.addFolder('图元数量');
+        folder1.add(settings, 'node', 0, 1000, 1).listen().onChange(renderRandom);
+        folder1.add(settings, 'edge', 0, 3000, 1).listen().onChange(renderRandom);
+        folder1.open();
+
+        const folder2 = panel.addFolder('渲染');
+        folder2.add(settings, 'display edge');
+        folder2.add(settings, 'display edge label');
+        folder2.add(settings, 'display node label');
+        folder2.open();
+
+        renderRandom();
+
+    }
+
+    init();
+</script>

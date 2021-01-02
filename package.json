@@ -1,0 +1,30 @@
+{
+  "name": "my-graph",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kampfer/my-graph.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kampfer/my-graph/issues"
+  },
+  "homepage": "https://github.com/kampfer/my-graph#readme",
+  "dependencies": {
+    "d3": "^6.3.1",
+    "eventemitter3": "^4.0.7"
+  },
+  "devDependencies": {
+    "dat.gui": "^0.7.7",
+    "rollup": "^2.35.1"
+  }
+}
