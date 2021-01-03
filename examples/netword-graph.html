@@ -20,7 +20,9 @@
         display: none;
     }
 
-    .edge-label {
+    svg.no-edge-label .edge-label,
+    svg.no-edge .edge,
+    svg.no-node-label .node-label {
         display: none;
     }
 </style>
@@ -70,11 +72,11 @@
     }
 
     const settings = {
-        'node': 2,
-        'edge': 10,
+        'node': 50,
+        'edge': 150,
         'display edge': true,
-        'display edge arrow': true,
-        'display edge label': true,
+        // 'display edge arrow': true,
+        'display edge label': false,
         'display node label': true,
     };
 
@@ -83,13 +85,19 @@
         const graph = new NetworkGraph({
             container: 'body',
             width: window.innerWidth,
-            height: window.innerHeight
+            height: window.innerHeight,
+            useZoom: true,
+            useDrag: true
         });
 
         const renderRandom = _.debounce(function () {
+            d3.select('svg')
+                .classed('no-edge', !settings['display edge'])
+                .classed('no-edge-label', !settings['display edge label'])
+                .classed('no-node-label', !settings['display node label']);
             const data = makeData(settings.node, settings.edge);
             graph.render(data);
-            console.log(data);
+            // console.log(data);
         }, 500);
 
         const panel = new dat.GUI({ width: 310 });
@@ -100,9 +108,9 @@
         folder1.open();
 
         const folder2 = panel.addFolder('渲染');
-        folder2.add(settings, 'display edge');
-        folder2.add(settings, 'display edge label');
-        folder2.add(settings, 'display node label');
+        folder2.add(settings, 'display edge').listen().onChange(v => d3.select('svg').classed('no-edge', !v));
+        folder2.add(settings, 'display edge label').listen().onChange(v => d3.select('svg').classed('no-edge-label', !v));
+        folder2.add(settings, 'display node label').listen().onChange(v => d3.select('svg').classed('no-node-label', !v));
         folder2.open();
 
         renderRandom();

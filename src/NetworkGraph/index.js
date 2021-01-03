@@ -70,8 +70,6 @@ export default class NetworkGraph extends EventEmitter3 {
 
         const handleTick = () => {
 
-            console.log('simulation tick');
-
             if (this.edgeSelection) {
                 this.edgeSelection.call(this._updateEdges);
             }
@@ -438,20 +436,17 @@ NetworkGraph.edgeConstructors = {
             const startMarker = selection.attr('marker-start');
             if (datum.target.x < datum.source.x) {  // 反
                 if ((!startMarker || startMarker === 'none')) {
-                    // new URL()性能差，直接拼接id
-                    // selection.attr('marker-start', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
                     selection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
                     selection.attr('marker-end', 'none');
                 }
             } else {    // 正
                 if (!startMarker || startMarker !== 'none') {
                     selection.attr('marker-start', 'none');
-                    // new URL()性能差，直接拼接id
-                    // selection.attr('marker-end', `url(${new URL(`#arrow-${datum.selected ? 'selected' : 'default'}`, location)}`);
                     selection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
                 }
             }
-            selection.attr('d', this.linkArc.bind(this));
+            if (!this._linkArc) this._linkArc = this.linkArc.bind(this);
+            selection.attr('d', this._linkArc);
         },
         linkArc(d) {
             // const r = 34;
