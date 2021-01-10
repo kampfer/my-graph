@@ -43,11 +43,18 @@ export default class NetworkGraph extends EventEmitter {
         this.useClickSelect = useClickSelect;
         this.useDrag = useDrag;
 
+        // ui状态
+        this._displayNodeLabel = true;
+        this._displayEdge = true;
+        this._displayEdgeLabel = true;
+        this._displayEdgeDirection = true;
+
         if (container) {
             this.svgSelection = d3.select(container).append('svg');
         } else {
             this.svgSelection = d3.create('svg');
         }
+        this.svgSelection.classed('network-graph', true);
 
         // d3 selection
         this.defsSelection = this.svgSelection.append('defs');
@@ -70,12 +77,12 @@ export default class NetworkGraph extends EventEmitter {
 
         const handleTick = () => {
 
-            if (this.edgeSelection) {
-                this.edgeSelection.call(this._updateEdges);
+            if (this.edgeSelection && this._displayEdge) {
+                this.edgeSelection.call(this._updateEdges, this);
             }
 
             if (this.nodeSelection) {
-                this.nodeSelection.call(this._updateNodes);
+                this.nodeSelection.call(this._updateNodes, this);
             }
 
         };
@@ -269,6 +276,44 @@ export default class NetworkGraph extends EventEmitter {
         this.rerender({ restartForce: false });
     }
 
+    toggleEdge(flag) {
+        if (typeof flag === 'boolean') {
+            this._displayEdge = flag;
+        } else {
+            this._displayEdge = !this._displayEdge;
+        }
+        this.svgSelection.classed('no-edge', !this._displayEdge);
+    }
+
+    toggleEdgeLabel(flag) {
+        if (typeof flag === 'boolean') {
+            this._displayEdgeLabel = flag;
+        } else {
+            this._displayEdgeLabel = !this._displayEdgeLabel;
+        }
+        this.svgSelection.classed('no-edge-label', !this._displayEdgeLabel);
+    }
+
+    // BUG: 布局停止后隐藏箭头，会导致边计算错误
+    toggleEdgeDirection(flag) {
+        if (typeof flag === 'boolean') {
+            this._displayEdgeDirection = flag;
+        } else {
+            this._displayEdgeDirection = !this._displayEdgeDirection;
+        }
+        this.svgSelection.classed('no-edge-direction', !this._displayEdgeDirection);
+        this.rerender({ restartForce: false });
+    }
+
+    toggleNodeLabel(flag) {
+        if (typeof flag === 'boolean') {
+            this._displayNodeLabel = flag;
+        } else {
+            this._displayNodeLabel = !this._displayNodeLabel;
+        }
+        this.svgSelection.classed('no-node-label', !this._displayNodeLabel);
+    }
+
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
         if (typeof edge.source === 'string') {
@@ -304,8 +349,7 @@ export default class NetworkGraph extends EventEmitter {
         return nodeSelection;
     }
 
-    _updateNodes(nodeSelection) {
-        const graph = this;
+    _updateNodes(nodeSelection, graph) {
         // 这里对每个节点单独执行更新操作
         // TODO: 先筛选出每类节点，然后批量更新每类节点，会不会更快？
         nodeSelection.each(function(d, i, nodes) {
@@ -324,8 +368,7 @@ export default class NetworkGraph extends EventEmitter {
         return edgeSelection;
     }
 
-    _updateEdges(edgeSelection) {
-        const graph = this;
+    _updateEdges(edgeSelection, graph) {
         edgeSelection.each(function(d) {
             const constructor = NetworkGraph.getEdgeConstructor(d.type);
             const selection = d3.select(this);
@@ -442,12 +485,12 @@ NetworkGraph.edgeConstructors = {
                     pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
                 }
             }
-            if (!this._linkArc) this._linkArc = this.linkArc.bind(this);
+            if (!this._linkArc) this._linkArc = this.linkArc.bind(this, graph);
             pathSelection.attr('d', this._linkArc);
         },
-        linkArc(d) {
+        linkArc(graph, d) {
             // const r = 34;
-            const arrowSize = 10;
+            const arrowSize = graph._displayEdgeDirection ? 10 : 0;
             const delta = 15;
             const angle = 15;
 

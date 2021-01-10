@@ -1,4 +1,12 @@
-.node-group.hidden,
-.edge-group.hidden {
+.network-graph .node-group.hidden,
+.network-graph .edge-group.hidden,
+.network-graph.no-edge .edge-group,
+.network-graph.no-edge-label .edge-label,
+.network-graph.no-node-label .node-label {
     display: none;
+}
+
+.network-graph.no-edge-direction .edge {
+    marker-start: none!important;
+    marker-end: none!important;
 }

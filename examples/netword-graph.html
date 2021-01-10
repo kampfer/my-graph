@@ -68,7 +68,7 @@
         'node': 50,
         'edge': 150,
         'display edge': true,
-        // 'display edge arrow': true,
+        'display edge arrow': true,
         'display edge label': false,
         'display node label': true,
     };
@@ -101,9 +101,10 @@
         folder1.open();
 
         const folder2 = panel.addFolder('渲染');
-        folder2.add(settings, 'display edge').listen().onChange(v => d3.select('svg').classed('no-edge', !v));
-        folder2.add(settings, 'display edge label').listen().onChange(v => d3.select('svg').classed('no-edge-label', !v));
-        folder2.add(settings, 'display node label').listen().onChange(v => d3.select('svg').classed('no-node-label', !v));
+        folder2.add(settings, 'display edge').listen().onChange(v => graph.toggleEdge(v));
+        folder2.add(settings, 'display edge arrow').listen().onChange(v => graph.toggleEdgeDirection(v));
+        folder2.add(settings, 'display edge label').listen().onChange(v => graph.toggleEdgeLabel(v));
+        folder2.add(settings, 'display node label').listen().onChange(v => graph.toggleNodeLabel(v));
         folder2.open();
 
         renderRandom();
