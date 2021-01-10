@@ -7,7 +7,7 @@
     "example": "examples"
   },
   "scripts": {
-    "dev": "rollup --config ./build/rollup.config.dev.js",
+    "dev": "rollup --config ./build/rollup.config.dev.js --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
