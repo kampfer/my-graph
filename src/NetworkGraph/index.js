@@ -1,10 +1,10 @@
-// import * as d3 from 'd3';
-// import EventEmitter from 'eventemitter3';
+import * as d3 from 'd3';
+import EventEmitter from 'eventemitter3';
 import * as math from './math.js';
 
-// import './graph.css';
+import './graph.css';
 
-export default class NetworkGraph extends EventEmitter3 {
+export default class NetworkGraph extends EventEmitter {
 
     static registerNode(nodeType, config) {
         NetworkGraph.nodeConstrutors[nodeType] = config;
