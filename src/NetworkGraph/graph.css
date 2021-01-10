@@ -1,5 +1,4 @@
-.edge.hidden,
 .node-group.hidden,
-.edge-label.hidden {
+.edge-group.hidden {
     display: none;
 }

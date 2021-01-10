@@ -96,8 +96,8 @@
         const panel = new dat.GUI({ width: 310 });
 
         const folder1 = panel.addFolder('图元数量');
-        folder1.add(settings, 'node', 0, 1000, 1).listen().onChange(renderRandom);
-        folder1.add(settings, 'edge', 0, 3000, 1).listen().onChange(renderRandom);
+        folder1.add(settings, 'node', 0, 1500, 1).listen().onChange(renderRandom);
+        folder1.add(settings, 'edge', 0, 4500, 1).listen().onChange(renderRandom);
         folder1.open();
 
         const folder2 = panel.addFolder('渲染');
