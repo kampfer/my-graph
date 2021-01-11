@@ -1,3 +1,7 @@
+.network-graph {
+    vertical-align: middle;
+}
+
 .network-graph .node-group.hidden,
 .network-graph .edge-group.hidden,
 .network-graph.no-edge .edge-group,
