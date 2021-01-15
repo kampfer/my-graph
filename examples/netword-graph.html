@@ -3,12 +3,9 @@
         padding: 0;
         margin: 0;
     }
-    svg {
-        display: block;
-    }
 </style>
 
-<script src="../node_modules/d3/dist/d3.js"></script>
+<!-- <script src="../node_modules/d3/dist/d3.js"></script>s -->
 <script src="https://cdn.jsdelivr.net/npm/dat.gui/build/dat.gui.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js"></script>
 
@@ -69,7 +66,7 @@
         'edge': 150,
         'display edge': true,
         'display edge arrow': true,
-        'display edge label': false,
+        'display edge label': true,
         'display node label': true,
     };
 
@@ -84,10 +81,10 @@
         });
 
         const renderRandom = _.debounce(function () {
-            d3.select('svg')
-                .classed('no-edge', !settings['display edge'])
-                .classed('no-edge-label', !settings['display edge label'])
-                .classed('no-node-label', !settings['display node label']);
+            // d3.select('svg')
+            //     .classed('no-edge', !settings['display edge'])
+            //     .classed('no-edge-label', !settings['display edge label'])
+            //     .classed('no-node-label', !settings['display node label']);
             const data = makeData(settings.node, settings.edge);
             graph.render(data);
             // console.log(data);
