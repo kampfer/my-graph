@@ -70,21 +70,23 @@ export function rotatePoint(x, y, dx, dy, angle) {
  * x1, y1 = 线坐标1, x2, y2 = 线坐标2, m, n = 圆坐标, r = 半径
  */
 export function getIntersectPointBetweenCircleAndLine (x1, y1, x2, y2, m, n, r) {
-    const a = Math.pow(x2 - x1, 2) + Math.pow(y2- y1, 2);
-    const b = 2 * ((x2 - x1) * (x1 - m) + (y2 - y1) * (y1 - n));
-    const c = m * m + n * n + x1 * x1 + y1 * y1 - 2 * (m * x1 + n * y1) - r * r;
+    const alpha = (y2 - y1) / (x2 - x1);
+    const beta = (x2 * y1 - x1 * y2) / (x2 - x1);
+    const a = 1 + alpha * alpha;
+    const b = -2 * (m - alpha * beta + alpha * n);
+    const c = m * m + beta * beta - 2 * beta * n + n * n - r * r;
     const s = b * b - 4 * a * c;
     if (s < 0) {
         return null;
     } else if (s === 0) {
         const u = -b / (2 * a);
-        return [x1 + u * (x2 - x1), y1 + u * (y2 - y1)];
+        return [u, alpha * u + beta];
     } else {
         const u1 = (-b + Math.sqrt(s)) / (2 * a);
         const u2 = (-b - Math.sqrt(s)) / (2 * a);
         return [
-            [x1 + u1 * (x2 - x1), y1 + u1 * (y2 - y1)],
-            [x1 + u2 * (x2 - x1), y1 + u2 * (y2 - y1)],
+            [u1, alpha * u1 + beta],
+            [u2, alpha * u2 + beta],
         ];
     }
 }
