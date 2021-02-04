@@ -198,6 +198,8 @@ export default class NetworkGraph extends EventEmitter {
 
         const { nodes, edges } = this.setData(data);
 
+        this.toggleEdgeLabel(edges.length <= 100);
+
         if (restartForce) this.forceSimulation.stop();
 
         this.forceSimulation.nodes(nodes);

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "rollup --config ./build/rollup.config.dev.js --watch",
+    "build": "rollup --config ./build/rollup.config.prod.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -30,6 +31,7 @@
     "dat.gui": "^0.7.7",
     "postcss": "^8.2.4",
     "rollup": "^2.35.1",
-    "rollup-plugin-postcss": "^4.0.0"
+    "rollup-plugin-postcss": "^4.0.0",
+    "rollup-plugin-terser": "^7.0.2"
   }
 }
