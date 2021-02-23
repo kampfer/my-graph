@@ -1,0 +1,80 @@
+<script type="module">
+    import { NetworkGraph } from '../../dist/graph.js';
+
+    function random(n) { // 生成n位长度的字符串
+        var str = "abcdefghijklmnopqrstuvwxyz0123456789"; // 可以作为常量放到random外面
+        var result = "";
+        for (var i = 0; i < n; i++) {
+            result += str[parseInt(Math.random() * str.length)];
+        }
+        return result;
+    }
+
+    function makeData(nodeCount, edgeCount) {
+        const data = { nodes: [], edges: [] };
+        for (let i = 0; i < nodeCount; i++) {
+            let id = random(10);
+            data.nodes.push({
+                id,
+                label: id
+            });
+        }
+        for (let i = 0; i < edgeCount; i++) {
+            let id = random(10);
+            let target = randomNode(data);
+            let source = randomNode(data);
+            while (source === target) {
+                target = randomNode(data);
+            }
+            data.edges.push({
+                id,
+                label: id,
+                source: source.id,
+                target: target.id,
+            });
+        }
+        return data;
+    }
+
+    function init() {
+        NetworkGraph.registerBehavior('link-node', {
+            events: {
+                'dragstart.node': 'handleDragstart',
+                'drag.node': 'handleDrag',
+                'dragend.node': 'handleDragend',
+                'mouseenter.node': 'handleMouseenter',
+            },
+            handleDragstart(e, d) {
+                console.log('dragstart');
+                if (!this.link) this.link = this.graph.gSelection.append('path').attr('marker-end', `url(#arrow-default)`).attr('stroke', '#000');
+                this.startX = d.x;
+                this.startY = d.y;
+                this.start = d;
+            },
+            handleDrag(e, d) {
+                console.log('drag');
+                this.endX = e.x;
+                this.endY = e.y;
+                this.link.attr('d', `M ${this.startX} ${this.startY} L ${this.endX} ${this.endY}`);
+            },
+            handleDragend(e, d) {
+                this.end = d;
+                console.log('dragend', this.start, this.end);
+            },
+            handleMouseenter(e, d) {
+                console.log('enter', d);
+            }
+        });
+
+        const graph = new NetworkGraph({
+            container: 'body',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            behaviors: ['link-node', 'zoom']
+        });
+
+        graph.render(makeData(3, 0));
+    }
+
+    init();
+</script>
