@@ -26,22 +26,22 @@ export default class NetworkGraph extends EventEmitter {
         return NetworkGraph.edgeConstructors.default;
     }
 
+    static registerBehavior(behaviorName, behavior) {
+        NetworkGraph.behaviors[behaviorName] = behavior;
+    }
+
+    static getBehavior(behaviorName) {
+        return NetworkGraph.behaviors[behaviorName];
+    }
+
     constructor({
         container,
         width = 300,
         height = 150,
-        useZoom = false,
-        useBrushSelect = false,
-        useClickSelect = false,
-        useDrag = true,
+        behaviors = [],
     } = {}) {
 
         super();
-
-        this.useZoom = useZoom;
-        this.useBrushSelect = useBrushSelect;
-        this.useClickSelect = useClickSelect;
-        this.useDrag = useDrag;
 
         // ui状态
         this._displayNodeLabel = true;
@@ -93,37 +93,19 @@ export default class NetworkGraph extends EventEmitter {
         this.forceSimulation = simulation;
         this.linkForce = linkForce;
 
-        if (this.useDrag) {
-            this.d3Drag = d3.drag()
-                .on('start', (event, d) => {
-                    if (!event.active) simulation.alphaTarget(0.3).restart();   // 重新激活force tick
-                    d.fx = d.x;
-                    d.fy = d.y;
-                })
-                .on('drag', (event, d) => {
-                    d.fx = event.x;
-                    d.fy = event.y;
-                })
-                .on('end', (event, d) => {
-                    if (!event.active) simulation.alphaTarget(0);   // 动画可以停止
-                    d.fx = null;
-                    d.fy = null;
-                });
-        }
+        this._d3Drag = d3.drag()
+            .on('start', this._transportEvent('dragstart.node'))
+            .on('drag', this._transportEvent('drag.node'))
+            .on('end', this._transportEvent('dragend.node'));
 
-        if (this.useZoom) {
-            const d3Zoom = d3.zoom()
-                .filter(event => !event.ctrlKey)
-                .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
-                // .scaleExtent([1, 8])
-                .on('zoom', ({ transform }) => this.gSelection.attr('transform', transform));
+        this._d3Zoom = d3.zoom()
+            .filter(event => !event.ctrlKey)
+            .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
+            // .scaleExtent([1, 8])
+            .on('zoom', this._transportEvent('zoom'));
+        this.svgSelection.call(this._d3Zoom);
 
-            this.svgSelection.call(d3Zoom);
-
-            this.d3Zoom = d3Zoom;
-        }
-
-        this._handleClickAtNode = this._handleClickAtNode.bind(this);
+        this.useBehaviors(behaviors);
 
     }
 
@@ -316,6 +298,34 @@ export default class NetworkGraph extends EventEmitter {
         this.svgSelection.classed('no-node-label', !this._displayNodeLabel);
     }
 
+    useBehavior(behaviorName) {
+        const behavior = NetworkGraph.getBehavior(behaviorName);
+        if (behavior) {
+            Object.entries(behavior.events)
+                .forEach(([eventName, callback]) => {
+                    this.on(eventName, behavior[callback]);
+                });
+        }
+    }
+
+    unuseBehavior(behaviorName) {
+        const behavior = NetworkGraph.getBehavior(behaviorName);
+        if (behavior) {
+            Object.entries(behavior.events)
+                .forEach(([eventName, callback]) => {
+                    this.off(eventName, behavior[callback]);
+                });
+        }
+    }
+
+    useBehaviors(behaviors) {
+        behaviors.forEach(behaviorName => this.useBehavior(behaviorName));
+    }
+
+    unuseBehaviors(behaviors) {
+        behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
+    }
+
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
         if (typeof edge.source === 'string') {
@@ -341,12 +351,11 @@ export default class NetworkGraph extends EventEmitter {
             return selection.node();
         });
 
-        nodeSelection.on('click', this._handleClickAtNode);
+        nodeSelection.on('click', this._transportEvent('click.node'));
 
         nodeSelection.attr('id', d => d.id)
-            .classed('node-group', true);
-
-        if (this.useDrag && this.d3Drag) nodeSelection.call(this.d3Drag);
+            .classed('node-group', true)
+            .call(this._d3Drag);
 
         return nodeSelection;
     }
@@ -378,16 +387,10 @@ export default class NetworkGraph extends EventEmitter {
         });
     }
 
-    _handleClickAtNode(event, d) {
-        event.preventDefault();
-        event.stopPropagation();
-        this.emit('click.node', d.id);
-        if (this.useClickSelect) {
-            const ids = [d.id];
-            this.selectNodes(ids);
-            this.emit('selectChange.node', ids);
-        }
+    _transportEvent(eventName) {
+        return (e, d) => this.emit(eventName, e, d);
     }
+
 }
 
 NetworkGraph.nodeConstrutors = {
@@ -560,6 +563,48 @@ NetworkGraph.edgeConstructors = {
 
                 return `M ${sourceX} ${sourceY} Q ${controlPoint[0]} ${controlPoint[1]} ${targetX} ${targetY}`;
             }
+        }
+    }
+};
+
+NetworkGraph.behaviors = {
+    'drag&drop': {
+        events: {
+            'dragstart.node': 'handleDragstart',
+            'drag.node': 'handleDrag',
+            'dragend.node': 'handleDragend'
+        },
+        handleDragstart(event, d) {
+            if (!event.active) this.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+            d.fx = d.x;
+            d.fy = d.y;
+        },
+        handleDrag(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        },
+        handleDragend(event, d) {
+            if (!event.active) this.forceSimulation.alphaTarget(0);   // 动画可以停止
+            d.fx = null;
+            d.fy = null;
+        }
+    },
+    'clickSelect': {
+        events: {
+            'click.node': 'handleClick'
+        },
+        handleClick(e, d) {
+            const ids = [d.id];
+            this.selectNodes(ids);
+            this.emit('selectChange.node', ids);
+        }
+    },
+    zoom: {
+        events: {
+            zoom: 'handleZoom'
+        },
+        handleZoom({ transform }) {
+            this.gSelection.attr('transform', transform)
         }
     }
 };
