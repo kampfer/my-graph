@@ -301,19 +301,26 @@ export default class NetworkGraph extends EventEmitter {
     useBehavior(behaviorName) {
         const behavior = NetworkGraph.getBehavior(behaviorName);
         if (behavior) {
+            const myBehavior = { events: behavior.events, graph: this };
             Object.entries(behavior.events)
-                .forEach(([eventName, callback]) => {
-                    this.on(eventName, behavior[callback]);
+                .forEach(([eventName, callbackName]) => {
+                    const callback = behavior[callbackName].bind(myBehavior);
+                    myBehavior[callbackName] = callback;
+                    this.on(eventName, callback);
                 });
+
+            if (!this._behaviors) this._behaviors = {};
+            this._behaviors[behaviorName] = myBehavior;
         }
     }
 
     unuseBehavior(behaviorName) {
-        const behavior = NetworkGraph.getBehavior(behaviorName);
+        if (!this._behaviors) return;
+        const behavior = this._behaviors[behaviorName];
         if (behavior) {
             Object.entries(behavior.events)
-                .forEach(([eventName, callback]) => {
-                    this.off(eventName, behavior[callback]);
+                .forEach(([eventName, callbackName]) => {
+                    this.off(eventName, behavior[callbackName]);
                 });
         }
     }
@@ -352,6 +359,7 @@ export default class NetworkGraph extends EventEmitter {
         });
 
         nodeSelection.on('click', this._transportEvent('click.node'));
+        nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
 
         nodeSelection.attr('id', d => d.id)
             .classed('node-group', true)
@@ -604,7 +612,7 @@ NetworkGraph.behaviors = {
             zoom: 'handleZoom'
         },
         handleZoom({ transform }) {
-            this.gSelection.attr('transform', transform)
+            this.graph.gSelection.attr('transform', transform)
         }
     }
 };
