@@ -4992,6 +4992,9 @@ class NetworkGraph extends eventemitter3 {
         this.nodeSelection = this.gSelection.selectAll('g.node-group');
         this.edgeLabelSelection = this.gSelection.selectAll('text.edge-label');
 
+        if (this.edgeSelection && this._displayEdge) this.edgeSelection.call(this._updateEdges, this);
+        if (this.nodeSelection) this.nodeSelection.call(this._updateNodes, this);
+
         const selectedNodes = this.nodeSelection.filter(d => d.selected);
         const selectedEdges = this.edgeSelection.filter(d => d.selected);
 
@@ -5118,6 +5121,17 @@ class NetworkGraph extends eventemitter3 {
         behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
     }
 
+    addNode() {}
+
+    removeNode() {}
+
+    addEdge(edge) {
+        this.data.edges.push(edge);
+        this.rerender({ restartForce: false });
+    }
+
+    removeEdge() {}
+
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
         if (typeof edge.source === 'string') {
@@ -5145,6 +5159,7 @@ class NetworkGraph extends eventemitter3 {
 
         nodeSelection.on('click', this._transportEvent('click.node'));
         nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
+        nodeSelection.on('mouseleave', this._transportEvent('mouseleave.node'));
 
         nodeSelection.attr('id', d => d.id)
             .classed('node-group', true)
@@ -5261,7 +5276,7 @@ NetworkGraph.edgeConstructors = {
                 .classed('edge-label', true)
                 .classed('hidden', datum.visible === false)
                 .append('textPath')
-                .text(`关系：${datum.label}`)
+                .text(datum.label ? `关系：${datum.label}` : '')
                 .attr('xlink:href', `#edge-${datum.id}`)
                 .attr('text-anchor', 'middle')
                 .attr('startOffset', '50%');
@@ -5368,7 +5383,7 @@ NetworkGraph.behaviors = {
             'dragend.node': 'handleDragend'
         },
         handleDragstart(event, d) {
-            if (!event.active) this.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+            if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
             d.fx = d.x;
             d.fy = d.y;
         },
@@ -5377,7 +5392,7 @@ NetworkGraph.behaviors = {
             d.fy = event.y;
         },
         handleDragend(event, d) {
-            if (!event.active) this.forceSimulation.alphaTarget(0);   // 动画可以停止
+            if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
             d.fx = null;
             d.fy = null;
         }
@@ -5388,7 +5403,7 @@ NetworkGraph.behaviors = {
         },
         handleClick(e, d) {
             const ids = [d.id];
-            this.selectNodes(ids);
+            this.graph.selectNodes(ids);
             this.emit('selectChange.node', ids);
         }
     },

@@ -598,7 +598,7 @@ NetworkGraph.behaviors = {
             'dragend.node': 'handleDragend'
         },
         handleDragstart(event, d) {
-            if (!event.active) this.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+            if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
             d.fx = d.x;
             d.fy = d.y;
         },
@@ -607,7 +607,7 @@ NetworkGraph.behaviors = {
             d.fy = event.y;
         },
         handleDragend(event, d) {
-            if (!event.active) this.forceSimulation.alphaTarget(0);   // 动画可以停止
+            if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
             d.fx = null;
             d.fy = null;
         }
@@ -618,7 +618,7 @@ NetworkGraph.behaviors = {
         },
         handleClick(e, d) {
             const ids = [d.id];
-            this.selectNodes(ids);
+            this.graph.selectNodes(ids);
             this.emit('selectChange.node', ids);
         }
     },

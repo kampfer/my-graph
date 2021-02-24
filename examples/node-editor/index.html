@@ -64,7 +64,8 @@
             },
             handleDragend(e, d) {
                 this.link.style('display', 'none');
-                this.link.attr('d', 'M 0 0');
+                // 必须把d重置，否则下次操作时，边会闪烁一次
+                this.link.attr('d', `M ${this.start.x} ${this.start.y}`);
                 if (this.end) {
                     console.log('add');
                     const id = random(10);

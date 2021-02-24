@@ -68,8 +68,7 @@
             container: 'body',
             width: window.innerWidth,
             height: window.innerHeight,
-            useZoom: true,
-            useDrag: true
+            behaviors: ['drag&drop', 'zoom'],
         });
 
         const renderRandom = _.debounce(function () {
