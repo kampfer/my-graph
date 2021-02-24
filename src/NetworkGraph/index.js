@@ -207,6 +207,9 @@ export default class NetworkGraph extends EventEmitter {
         this.nodeSelection = this.gSelection.selectAll('g.node-group');
         this.edgeLabelSelection = this.gSelection.selectAll('text.edge-label');
 
+        if (this.edgeSelection && this._displayEdge) this.edgeSelection.call(this._updateEdges, this);
+        if (this.nodeSelection) this.nodeSelection.call(this._updateNodes, this);
+
         const selectedNodes = this.nodeSelection.filter(d => d.selected);
         const selectedEdges = this.edgeSelection.filter(d => d.selected);
 
@@ -333,6 +336,17 @@ export default class NetworkGraph extends EventEmitter {
         behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
     }
 
+    addNode() {}
+
+    removeNode() {}
+
+    addEdge(edge) {
+        this.data.edges.push(edge);
+        this.rerender({ restartForce: false });
+    }
+
+    removeEdge() {}
+
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
         if (typeof edge.source === 'string') {
@@ -360,6 +374,7 @@ export default class NetworkGraph extends EventEmitter {
 
         nodeSelection.on('click', this._transportEvent('click.node'));
         nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
+        nodeSelection.on('mouseleave', this._transportEvent('mouseleave.node'));
 
         nodeSelection.attr('id', d => d.id)
             .classed('node-group', true)
@@ -476,7 +491,7 @@ NetworkGraph.edgeConstructors = {
                 .classed('edge-label', true)
                 .classed('hidden', datum.visible === false)
                 .append('textPath')
-                .text(`关系：${datum.label}`)
+                .text(datum.label ? `关系：${datum.label}` : '')
                 .attr('xlink:href', `#edge-${datum.id}`)
                 .attr('text-anchor', 'middle')
                 .attr('startOffset', '50%');

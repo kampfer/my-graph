@@ -37,32 +37,52 @@
     }
 
     function init() {
-        NetworkGraph.registerBehavior('link-node', {
+        NetworkGraph.registerBehavior('connect-node', {
             events: {
                 'dragstart.node': 'handleDragstart',
                 'drag.node': 'handleDrag',
                 'dragend.node': 'handleDragend',
                 'mouseenter.node': 'handleMouseenter',
+                'mouseleave.node': 'handleMouseleave',
             },
             handleDragstart(e, d) {
-                console.log('dragstart');
-                if (!this.link) this.link = this.graph.gSelection.append('path').attr('marker-end', `url(#arrow-default)`).attr('stroke', '#000');
-                this.startX = d.x;
-                this.startY = d.y;
+                if (!this.link) {
+                    this.link = this.graph.gSelection.append('path')
+                        .attr('marker-end', `url(#arrow-default)`)
+                        .attr('stroke', '#000');
+                } else {
+                    this.link.style('display', 'unset');
+                }
                 this.start = d;
             },
             handleDrag(e, d) {
-                console.log('drag');
-                this.endX = e.x;
-                this.endY = e.y;
-                this.link.attr('d', `M ${this.startX} ${this.startY} L ${this.endX} ${this.endY}`);
+                if (this.end) {
+                    this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`);
+                } else {
+                    this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${e.x} ${e.y}`);
+                }
             },
             handleDragend(e, d) {
-                this.end = d;
-                console.log('dragend', this.start, this.end);
+                this.link.style('display', 'none');
+                this.link.attr('d', 'M 0 0');
+                if (this.end) {
+                    console.log('add');
+                    const id = random(10);
+                    this.graph.addEdge({
+                        id,
+                        label: id,
+                        source: this.start,
+                        target: this.end
+                    });
+                }
             },
             handleMouseenter(e, d) {
-                console.log('enter', d);
+                if (d !== this.start) {
+                    this.end = d;
+                }
+            },
+            handleMouseleave(e, d) {
+                this.end = null;
             }
         });
 
@@ -70,10 +90,12 @@
             container: 'body',
             width: window.innerWidth,
             height: window.innerHeight,
-            behaviors: ['link-node', 'zoom']
+            behaviors: ['connect-node', 'zoom']
         });
 
-        graph.render(makeData(3, 0));
+        // graph.unuseBehavior('connect-node');
+
+        graph.render(makeData(10, 0));
     }
 
     init();
