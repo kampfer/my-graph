@@ -4890,6 +4890,8 @@ class NetworkGraph extends eventemitter3 {
             .on('zoom', this._transportEvent('zoom'));
         this.svgSelection.call(this._d3Zoom);
 
+        this.svgSelection.on('mousemove', this._transportEvent('mousemove.canvas'));
+
         this.useBehaviors(behaviors);
 
     }
@@ -5089,7 +5091,7 @@ class NetworkGraph extends eventemitter3 {
     useBehavior(behaviorName) {
         const behavior = NetworkGraph.getBehavior(behaviorName);
         if (behavior) {
-            const myBehavior = { events: behavior.events, graph: this };
+            const myBehavior = { graph: this, ...behavior };
             Object.entries(behavior.events)
                 .forEach(([eventName, callbackName]) => {
                     const callback = behavior[callbackName].bind(myBehavior);
@@ -5196,7 +5198,13 @@ class NetworkGraph extends eventemitter3 {
     }
 
     _transportEvent(eventName) {
-        return (e, d) => this.emit(eventName, e, d);
+        if (!this._transportedEvents) this._transportedEvents = {};
+        if (!this._transportedEvents[eventName]) {
+            this._transportedEvents[eventName] = (e, d) => {
+                this.emit(eventName, e, d);
+            };
+        }
+        return this._transportedEvents[eventName];
     }
 
 }
