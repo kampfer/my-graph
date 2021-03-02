@@ -474,7 +474,7 @@ NetworkGraph.edgeConstructors = {
                     .join('marker')
                     .attr('id', d => `arrow-${d}`)
                     .attr('class', d => `arrow ${d}`)
-                    .attr('viewbox', '0 -5 10 10')
+                    .attr('viewbox', '-10 -5 10 10')
                     .attr('refX', 0)
                     .attr('refY', 0)
                     .attr('markerWidth', 6)
@@ -482,7 +482,7 @@ NetworkGraph.edgeConstructors = {
                     .attr('overflow', 'visible')
                     .attr('orient', 'auto-start-reverse')
                     .append('svg:path')
-                    .attr('d', 'M 0,-5 L 10 ,0 L 0,5');
+                    .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
             }
 
             const g = d3.create('svg:g')
@@ -526,7 +526,7 @@ NetworkGraph.edgeConstructors = {
         },
         linkArc(graph, d) {
             // const r = 34;
-            const arrowSize = graph._displayEdgeDirection ? 10 : 0;
+            // const arrowSize = graph._displayEdgeDirection ? 0 : 0;
             const delta = 15;
             const angle = 15;
 
@@ -547,7 +547,7 @@ NetworkGraph.edgeConstructors = {
                 startY = d.target.y;
                 endX = d.source.x;
                 endY = d.source.y;
-                sourceR += arrowSize;
+                // sourceR += arrowSize;
                 // targetR = r;
             } else {    // 正
                 startX = d.source.x;
@@ -555,7 +555,7 @@ NetworkGraph.edgeConstructors = {
                 endX = d.target.x;
                 endY = d.target.y;
                 // sourceR = r;
-                targetR += arrowSize;
+                // targetR += arrowSize;
             }
 
             const intersectSourcePoints = math.getIntersectPointBetweenCircleAndLine(startX, startY, endX, endY, startX, startY, sourceR);

@@ -130,15 +130,25 @@
                 }
             },
             updateLinkPosition(x, y) {
-                let translateX = 0, translateY = 0, scale = 1;
+                let translateX = 0,
+                    translateY = 0,
+                    scale = 1;
+
                 if (this.transformOfZoom) {
                     translateX = this.transformOfZoom.x;
                     translateY = this.transformOfZoom.y;
                     scale = this.transformOfZoom.k;
                 }
-                // 必须+1，否则光标永远在link之上，点击鼠标只能点到link，无法点到node，
-                const pointX = (x - this.graph.svgSelection.node().width.baseVal.value / 2 - translateX) / scale + 1;
-                const pointY = (y - this.graph.svgSelection.node().height.baseVal.value / 2 - translateY) / scale + 1;
+
+                x -= this.graph.svgSelection.node().width.baseVal.value / 2;
+                y -= this.graph.svgSelection.node().height.baseVal.value / 2;
+
+                let pointX = 0.95 * (x - this.start.x) + this.start.x;
+                let pointY = 0.95 * (y - this.start.y) + this.start.y;
+
+                pointX = (pointX - translateX) / scale;
+                pointY = (pointY - translateY) / scale;
+
                 this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${pointX} ${pointY}`);
             }
         });
