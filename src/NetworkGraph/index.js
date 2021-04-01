@@ -106,6 +106,9 @@ export default class NetworkGraph extends EventEmitter {
         this.svgSelection.call(this._d3Zoom);
 
         this.svgSelection.on('mousemove', this._transportEvent('mousemove.canvas'));
+        this.svgSelection.on('mousedown', this._transportEvent('mousedown.canvas'));
+        this.svgSelection.on('click', this._transportEvent('click.canvas'));
+        this.svgSelection.on('contextmenu', this._transportEvent('contextmenu.canvas'));
 
         this.useBehaviors(behaviors);
 
@@ -338,16 +341,35 @@ export default class NetworkGraph extends EventEmitter {
         behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
     }
 
-    addNode() {}
+    addNode(node) {
+        this.data.nodes.push(node);
+        this.rerender({ restartForce: false });
+    }
 
-    removeNode() {}
+    removeNode(node) {
+        const index = this.data.nodes.indexOf(node);
+        this.data.nodes.splice(index, 1);
+        this.rerender({ restartForce: false });
+    }
+
+    findNode(fn) {
+        return this.data.nodes.filter(fn);
+    }
 
     addEdge(edge) {
         this.data.edges.push(edge);
         this.rerender({ restartForce: false });
     }
 
-    removeEdge() {}
+    removeEdge(edge) {
+        const index = this.data.edges.indexOf(edge);
+        this.data.edges.splice(index, 1);
+        this.rerender({ restartForce: false });
+    }
+
+    findEdge(fn) {
+        return this.data.edges.filter(fn);
+    }
 
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
@@ -377,6 +399,7 @@ export default class NetworkGraph extends EventEmitter {
         nodeSelection.on('click', this._transportEvent('click.node'));
         nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
         nodeSelection.on('mouseleave', this._transportEvent('mouseleave.node'));
+        nodeSelection.on('contextmenu', this._transportEvent('contextmenu.node'));
 
         nodeSelection.attr('id', d => d.id)
             .classed('node-group', true)
@@ -399,6 +422,9 @@ export default class NetworkGraph extends EventEmitter {
         const edgeSelection = enter.append(d => {
             const constructor = NetworkGraph.getEdgeConstructor(d.type);
             const selection = constructor.create(d, this);
+
+            selection.on('click', this._transportEvent('click.edge'));
+
             return selection.node();
         });
         return edgeSelection;
@@ -499,7 +525,7 @@ NetworkGraph.edgeConstructors = {
                 .classed('edge-label', true)
                 .classed('hidden', datum.visible === false)
                 .append('textPath')
-                .text(datum.label ? `关系：${datum.label}` : '')
+                .text(datum.label ? datum.label : '')
                 .attr('xlink:href', `#edge-${datum.id}`)
                 .attr('text-anchor', 'middle')
                 .attr('startOffset', '50%');
