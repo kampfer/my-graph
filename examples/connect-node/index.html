@@ -1,5 +1,8 @@
 <style>
-    body { padding: 0; margin: 0}
+    body {
+        padding: 0;
+        margin: 0
+    }
 </style>
 
 <script type="module">
@@ -40,127 +43,89 @@
         return data;
     }
 
-    function init() {
-        NetworkGraph.registerBehavior('connect-node2', {
-            events: {
-                'dragstart.node': 'handleDragstart',
-                'drag.node': 'handleDrag',
-                'dragend.node': 'handleDragend',
-                'mouseenter.node': 'handleMouseenter',
-                'mouseleave.node': 'handleMouseleave',
-            },
-            handleDragstart(e, d) {
-                if (!this.link) {
-                    this.link = this.graph.gSelection.append('path')
-                        .attr('marker-end', `url(#arrow-default)`)
-                        .attr('stroke', '#000');
-                } else {
-                    this.link.style('display', 'unset');
-                }
-                this.start = d;
-            },
-            handleDrag(e, d) {
-                if (this.end) {
-                    this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`);
-                } else {
-                    this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${e.x} ${e.y}`);
-                }
-            },
-            handleDragend(e, d) {
+    class ConnectNodeBehavior extends NetworkGraph.Behavior {
+
+        constructor(...args) {
+            super(...args);
+            this.events = {
+                'click.node': this.handleClickAtNode.bind(this),
+                'mousemove.canvas': this.handleMousemoveAtCanvas.bind(this),
+                'zoom': this.handleZoom.bind(this),
+            };
+        }
+
+        handleZoom(e) {
+            this.transformOfZoom = e.transform;
+        }
+
+        handleClickAtNode(e, d) {
+            if (!this.link) {
+                this.link = this.graph.gSelection.append('path')
+                    .attr('marker-end', `url(#arrow-default)`)
+                    .attr('stroke', '#000')
+                    .style('display', 'none');
+            }
+            if (this.connecting) {
+                this.connecting = false;
                 this.link.style('display', 'none');
-                // 必须把d重置，否则下次操作时，边会闪烁一次
-                this.link.attr('d', `M ${this.start.x} ${this.start.y}`);
-                if (this.end) {
-                    const id = random(10);
-                    this.graph.addEdge({
-                        id,
-                        label: id,
-                        source: this.start,
-                        target: this.end
-                    });
-                }
-            },
-            handleMouseenter(e, d) {
-                if (d !== this.start) {
-                    this.end = d;
-                }
-            },
-            handleMouseleave(e, d) {
-                this.end = null;
+                this.end = d;
+                const id = random(10);
+                this.graph.addEdge({
+                    id,
+                    label: id,
+                    source: this.start,
+                    target: this.end
+                });
+            } else {
+                this.connecting = true;
+                this.link.style('display', 'unset');
+                this.start = d;
+                this.updateLinkPosition(e.x, e.y);
             }
-        });
+        }
 
-        NetworkGraph.registerBehavior('connect-node', {
-            events: {
-                'click.node': 'handleClickAtNode',
-                'mousemove.canvas': 'handleMousemoveAtCanvas',
-                'zoom': 'handleZoom',
-            },
-            handleZoom(e) {
-                this.transformOfZoom = e.transform;
-            },
-            handleClickAtNode(e, d) {
-                if (!this.link) {
-                    this.link = this.graph.gSelection.append('path')
-                        .attr('marker-end', `url(#arrow-default)`)
-                        .attr('stroke', '#000')
-                        .style('display', 'none');
-                }
-                if (this.connecting) {
-                    this.connecting = false;
-                    this.link.style('display', 'none');
-                    this.end = d;
-                    const id = random(10);
-                    this.graph.addEdge({
-                        id,
-                        label: id,
-                        source: this.start,
-                        target: this.end
-                    });
-                } else {
-                    this.connecting = true;
-                    this.link.style('display', 'unset');
-                    this.start = d;
-                    this.updateLinkPosition(e.x, e.y);
-                }
-            },
-            handleMousemoveAtCanvas(e, d) {
-                if (this.connecting) {
-                    this.updateLinkPosition(e.x, e.y);
-                }
-            },
-            updateLinkPosition(x, y) {
-                let translateX = 0,
-                    translateY = 0,
-                    scale = 1;
-
-                if (this.transformOfZoom) {
-                    translateX = this.transformOfZoom.x;
-                    translateY = this.transformOfZoom.y;
-                    scale = this.transformOfZoom.k;
-                }
-
-                x -= this.graph.svgSelection.node().width.baseVal.value / 2;
-                y -= this.graph.svgSelection.node().height.baseVal.value / 2;
-
-                let pointX = 0.95 * (x - this.start.x) + this.start.x;
-                let pointY = 0.95 * (y - this.start.y) + this.start.y;
-
-                pointX = (pointX - translateX) / scale;
-                pointY = (pointY - translateY) / scale;
-
-                this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${pointX} ${pointY}`);
+        handleMousemoveAtCanvas(e, d) {
+            if (this.connecting) {
+                this.updateLinkPosition(e.x, e.y);
             }
-        });
+        }
+
+        updateLinkPosition(x, y) {
+            let translateX = 0,
+                translateY = 0,
+                scale = 1;
+
+            if (this.transformOfZoom) {
+                translateX = this.transformOfZoom.x;
+                translateY = this.transformOfZoom.y;
+                scale = this.transformOfZoom.k;
+            }
+
+            x -= this.graph.svgSelection.node().width.baseVal.value / 2;
+            y -= this.graph.svgSelection.node().height.baseVal.value / 2;
+
+            let pointX = 0.95 * (x - this.start.x) + this.start.x;
+            let pointY = 0.95 * (y - this.start.y) + this.start.y;
+
+            pointX = (pointX - translateX) / scale;
+            pointY = (pointY - translateY) / scale;
+
+            this.link.attr('d', `M ${this.start.x} ${this.start.y} L ${pointX} ${pointY}`);
+        }
+
+    }
+
+    function init() {
+        NetworkGraph.registerBehavior('connect-node', ConnectNodeBehavior);
 
         const graph = new NetworkGraph({
             container: 'body',
             width: window.innerWidth,
             height: window.innerHeight,
-            behaviors: ['connect-node', 'zoom']
+            behaviors: ['connect-node', 'drag&drop', 'zoom']
         });
 
-        // graph.unuseBehavior('connect-node');
+        // graph.unuseBehavior('zoom');
 
         graph.render(makeData(10, 0));
     }

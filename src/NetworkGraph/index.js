@@ -1,6 +1,10 @@
 import * as d3 from 'd3';
 import EventEmitter from 'eventemitter3';
 import * as math from './math.js';
+import DragDropBehavior from './behaviors/DragDrop';
+import ClickSelectBehavior from './behaviors/ClickSelect';
+import ZoomBehavior from './behaviors/Zoom';
+import Behavior from './behaviors/Behavior';
 
 import './graph.css';
 
@@ -27,6 +31,7 @@ export default class NetworkGraph extends EventEmitter {
     }
 
     static registerBehavior(behaviorName, behavior) {
+        if (!NetworkGraph.behaviors) NetworkGraph.behaviors = {};
         NetworkGraph.behaviors[behaviorName] = behavior;
     }
 
@@ -307,30 +312,20 @@ export default class NetworkGraph extends EventEmitter {
     }
 
     useBehavior(behaviorName) {
-        const behavior = NetworkGraph.getBehavior(behaviorName);
-        if (behavior) {
-            const myBehavior = { graph: this, ...behavior };
-            Object.entries(behavior.events)
-                .forEach(([eventName, callbackName]) => {
-                    const callback = behavior[callbackName].bind(myBehavior);
-                    myBehavior[callbackName] = callback;
-                    this.on(eventName, callback);
-                });
+        const BehaviorConstructor = NetworkGraph.getBehavior(behaviorName);
+        if (!BehaviorConstructor) return;
 
-            if (!this._behaviors) this._behaviors = {};
-            this._behaviors[behaviorName] = myBehavior;
-        }
+        if (!this._behaviors) this._behaviors = {};
+
+        const behavior = new BehaviorConstructor(this);
+        this._behaviors[behaviorName] = behavior;
+        behavior.use();
     }
 
     unuseBehavior(behaviorName) {
         if (!this._behaviors) return;
         const behavior = this._behaviors[behaviorName];
-        if (behavior) {
-            Object.entries(behavior.events)
-                .forEach(([eventName, callbackName]) => {
-                    this.off(eventName, behavior[callbackName]);
-                });
-        }
+        if (behavior) behavior.destroy();
     }
 
     useBehaviors(behaviors) {
@@ -624,44 +619,8 @@ NetworkGraph.edgeConstructors = {
     }
 };
 
-NetworkGraph.behaviors = {
-    'drag&drop': {
-        events: {
-            'dragstart.node': 'handleDragstart',
-            'drag.node': 'handleDrag',
-            'dragend.node': 'handleDragend'
-        },
-        handleDragstart(event, d) {
-            if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
-            d.fx = d.x;
-            d.fy = d.y;
-        },
-        handleDrag(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        },
-        handleDragend(event, d) {
-            if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
-            d.fx = null;
-            d.fy = null;
-        }
-    },
-    'clickSelect': {
-        events: {
-            'click.node': 'handleClick'
-        },
-        handleClick(e, d) {
-            const ids = [d.id];
-            this.graph.selectNodes(ids);
-            this.emit('selectChange.node', ids);
-        }
-    },
-    zoom: {
-        events: {
-            zoom: 'handleZoom'
-        },
-        handleZoom({ transform }) {
-            this.graph.gSelection.attr('transform', transform)
-        }
-    }
-};
+NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
+NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);
+NetworkGraph.registerBehavior('zoom', ZoomBehavior);
+
+NetworkGraph.Behavior = Behavior;

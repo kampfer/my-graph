@@ -4759,6 +4759,103 @@ function getIntersectPointBetweenCircleAndLine (x1, y1, x2, y2, m, n, r) {
     }
 }
 
+class Behavior {
+
+    constructor(graph) {
+        this.graph = graph;
+    }
+
+    use() {
+        if (this.events) {
+            Object.entries(this.events).forEach(([eventName, callback]) => {
+                this.graph.on(eventName, callback);
+            });
+        }
+    }
+
+    unuse() {
+        if (this.events) {
+            Object.entries(this.events).forEach(([eventName, callback]) => {
+                this.graph.off(eventName, callback);
+            });
+        }
+    }
+
+    destroy() {
+        this.unuse();
+        this.events = null;
+    }
+
+    // _fixEventHandles(events = this.events) {
+    //     Object.entries(events).forEach(([eventName, callback]) => {
+    //         events[eventName] = callback.bind(this);
+    //     });
+    // }
+
+}
+
+class DragDropBehavior extends Behavior {
+
+    constructor(...args) {
+        super(...args);
+        this.events = {
+            'dragstart.node': this.handleDragstart.bind(this),
+            'drag.node': this.handleDrag.bind(this),
+            'dragend.node': this.handleDragend.bind(this)
+        };
+    }
+
+    handleDragstart(event, d) {
+        if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    handleDrag(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    handleDragend(event, d) {
+        if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
+        d.fx = null;
+        d.fy = null;
+    }
+
+}
+
+class ClickSelectBehavior extends Behavior {
+
+    constructor(...args) {
+        super(...args);
+        this.events = {
+            'click.node': this.handleClick.bind(this)
+        };
+    }
+
+    handleClick(e, d) {
+        const ids = [d.id];
+        this.graph.selectNodes(ids);
+        this.emit('selectChange.node', ids);
+    }
+
+}
+
+class ZoomBehavior extends Behavior {
+
+    constructor(...args) {
+        super(...args);
+        this.events = {
+            zoom: this.handleZoom.bind(this)
+        };
+    }
+
+    handleZoom({ transform }) {
+        this.graph.gSelection.attr('transform', transform);
+    }
+
+}
+
 function styleInject(css, ref) {
   if ( ref === void 0 ) ref = {};
   var insertAt = ref.insertAt;
@@ -4812,6 +4909,7 @@ class NetworkGraph extends eventemitter3 {
     }
 
     static registerBehavior(behaviorName, behavior) {
+        if (!NetworkGraph.behaviors) NetworkGraph.behaviors = {};
         NetworkGraph.behaviors[behaviorName] = behavior;
     }
 
@@ -4891,6 +4989,9 @@ class NetworkGraph extends eventemitter3 {
         this.svgSelection.call(this._d3Zoom);
 
         this.svgSelection.on('mousemove', this._transportEvent('mousemove.canvas'));
+        this.svgSelection.on('mousedown', this._transportEvent('mousedown.canvas'));
+        this.svgSelection.on('click', this._transportEvent('click.canvas'));
+        this.svgSelection.on('contextmenu', this._transportEvent('contextmenu.canvas'));
 
         this.useBehaviors(behaviors);
 
@@ -5089,30 +5190,20 @@ class NetworkGraph extends eventemitter3 {
     }
 
     useBehavior(behaviorName) {
-        const behavior = NetworkGraph.getBehavior(behaviorName);
-        if (behavior) {
-            const myBehavior = { graph: this, ...behavior };
-            Object.entries(behavior.events)
-                .forEach(([eventName, callbackName]) => {
-                    const callback = behavior[callbackName].bind(myBehavior);
-                    myBehavior[callbackName] = callback;
-                    this.on(eventName, callback);
-                });
+        const BehaviorConstructor = NetworkGraph.getBehavior(behaviorName);
+        if (!BehaviorConstructor) return;
 
-            if (!this._behaviors) this._behaviors = {};
-            this._behaviors[behaviorName] = myBehavior;
-        }
+        if (!this._behaviors) this._behaviors = {};
+
+        const behavior = new BehaviorConstructor(this);
+        this._behaviors[behaviorName] = behavior;
+        behavior.use();
     }
 
     unuseBehavior(behaviorName) {
         if (!this._behaviors) return;
         const behavior = this._behaviors[behaviorName];
-        if (behavior) {
-            Object.entries(behavior.events)
-                .forEach(([eventName, callbackName]) => {
-                    this.off(eventName, behavior[callbackName]);
-                });
-        }
+        if (behavior) behavior.destroy();
     }
 
     useBehaviors(behaviors) {
@@ -5123,16 +5214,35 @@ class NetworkGraph extends eventemitter3 {
         behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
     }
 
-    addNode() {}
+    addNode(node) {
+        this.data.nodes.push(node);
+        this.rerender({ restartForce: false });
+    }
 
-    removeNode() {}
+    removeNode(node) {
+        const index = this.data.nodes.indexOf(node);
+        this.data.nodes.splice(index, 1);
+        this.rerender({ restartForce: false });
+    }
+
+    findNode(fn) {
+        return this.data.nodes.filter(fn);
+    }
 
     addEdge(edge) {
         this.data.edges.push(edge);
         this.rerender({ restartForce: false });
     }
 
-    removeEdge() {}
+    removeEdge(edge) {
+        const index = this.data.edges.indexOf(edge);
+        this.data.edges.splice(index, 1);
+        this.rerender({ restartForce: false });
+    }
+
+    findEdge(fn) {
+        return this.data.edges.filter(fn);
+    }
 
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
@@ -5162,6 +5272,7 @@ class NetworkGraph extends eventemitter3 {
         nodeSelection.on('click', this._transportEvent('click.node'));
         nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
         nodeSelection.on('mouseleave', this._transportEvent('mouseleave.node'));
+        nodeSelection.on('contextmenu', this._transportEvent('contextmenu.node'));
 
         nodeSelection.attr('id', d => d.id)
             .classed('node-group', true)
@@ -5184,6 +5295,9 @@ class NetworkGraph extends eventemitter3 {
         const edgeSelection = enter.append(d => {
             const constructor = NetworkGraph.getEdgeConstructor(d.type);
             const selection = constructor.create(d, this);
+
+            selection.on('click', this._transportEvent('click.edge'));
+
             return selection.node();
         });
         return edgeSelection;
@@ -5284,7 +5398,7 @@ NetworkGraph.edgeConstructors = {
                 .classed('edge-label', true)
                 .classed('hidden', datum.visible === false)
                 .append('textPath')
-                .text(datum.label ? `关系：${datum.label}` : '')
+                .text(datum.label ? datum.label : '')
                 .attr('xlink:href', `#edge-${datum.id}`)
                 .attr('text-anchor', 'middle')
                 .attr('startOffset', '50%');
@@ -5383,46 +5497,10 @@ NetworkGraph.edgeConstructors = {
     }
 };
 
-NetworkGraph.behaviors = {
-    'drag&drop': {
-        events: {
-            'dragstart.node': 'handleDragstart',
-            'drag.node': 'handleDrag',
-            'dragend.node': 'handleDragend'
-        },
-        handleDragstart(event, d) {
-            if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
-            d.fx = d.x;
-            d.fy = d.y;
-        },
-        handleDrag(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        },
-        handleDragend(event, d) {
-            if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
-            d.fx = null;
-            d.fy = null;
-        }
-    },
-    'clickSelect': {
-        events: {
-            'click.node': 'handleClick'
-        },
-        handleClick(e, d) {
-            const ids = [d.id];
-            this.graph.selectNodes(ids);
-            this.emit('selectChange.node', ids);
-        }
-    },
-    zoom: {
-        events: {
-            zoom: 'handleZoom'
-        },
-        handleZoom({ transform }) {
-            this.graph.gSelection.attr('transform', transform);
-        }
-    }
-};
+NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
+NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);
+NetworkGraph.registerBehavior('zoom', ZoomBehavior);
+
+NetworkGraph.Behavior = Behavior;
 
 export { NetworkGraph };
