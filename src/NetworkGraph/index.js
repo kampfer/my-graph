@@ -5,6 +5,7 @@ import DragDropBehavior from './behaviors/DragDrop';
 import ClickSelectBehavior from './behaviors/ClickSelect';
 import ZoomBehavior from './behaviors/Zoom';
 import Behavior from './behaviors/Behavior';
+import ForceLayout from './layouts/ForceLayout';
 
 import './graph.css';
 
@@ -44,6 +45,7 @@ export default class NetworkGraph extends EventEmitter {
         width = 300,
         height = 150,
         behaviors = [],
+        layout = ForceLayout
     } = {}) {
 
         super();
@@ -70,33 +72,7 @@ export default class NetworkGraph extends EventEmitter {
 
         this.setViewBox(-width / 2, -height / 2, width, height);
 
-        const simulation = d3.forceSimulation();
-        const linkForce = d3.forceLink().id(d => d.id).distance(200);
-
-        simulation.stop();
-
-        simulation.force('edge', linkForce)
-            .force('change', d3.forceManyBody().strength(-500))
-            .force('x', d3.forceX().strength(0.05))
-            .force('y', d3.forceY().strength(0.05));
-
-        const handleTick = () => {
-
-            if (this.edgeSelection && this._displayEdge) {
-                this.edgeSelection.call(this._updateEdges, this);
-            }
-
-            if (this.nodeSelection) {
-                this.nodeSelection.call(this._updateNodes, this);
-            }
-
-        };
-
-        simulation.on('tick', handleTick);
-
-        // 力导布局
-        this.forceSimulation = simulation;
-        this.linkForce = linkForce;
+        this.layout = new layout(this);
 
         this._d3Drag = d3.drag()
             .on('start', this._transportEvent('dragstart.node'))
@@ -192,33 +168,25 @@ export default class NetworkGraph extends EventEmitter {
 
         this.toggleEdgeLabel(edges.length <= 100);
 
-        if (restartForce) this.forceSimulation.stop();
-
-        this.forceSimulation.nodes(nodes);
-        this.linkForce.links(edges);
-
         this.gSelection.selectAll('g.edge-group')
             .data(edges, d => d.id)
-            .join(enter => this._createEdges(enter))
-            .classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
+            .join(
+                enter => this._createEdges(enter),
+                update => this._updateEdges(update),
+            );
 
         // 节点
         this.gSelection.selectAll('g.node-group')
             // 必须给key，否则改变元素顺序时，展示会错乱
             .data(nodes, d => d.id)
-            .join(enter => this._createNodes(enter))
-            .classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
+            .join(
+                enter => this._createNodes(enter),
+                update => this._updateNodes(update),
+            );
 
         this.edgeSelection = this.gSelection.selectAll('g.edge-group');
         this.nodeSelection = this.gSelection.selectAll('g.node-group');
         this.edgeLabelSelection = this.gSelection.selectAll('text.edge-label');
-
-        if (this.edgeSelection && this._displayEdge) this.edgeSelection.call(this._updateEdges, this);
-        if (this.nodeSelection) this.nodeSelection.call(this._updateNodes, this);
 
         const selectedNodes = this.nodeSelection.filter(d => d.selected);
         const selectedEdges = this.edgeSelection.filter(d => d.selected);
@@ -230,10 +198,8 @@ export default class NetworkGraph extends EventEmitter {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        if (restartForce) {
-            this.forceSimulation.alpha(1);
-            this.forceSimulation.restart();
-        }
+        // this.layout.data(data);
+        // this.layout.start();
 
     }
 
@@ -411,6 +377,12 @@ export default class NetworkGraph extends EventEmitter {
             const selection = d3.select(this);
             constructor.update(selection, d, graph);
         });
+
+        nodeSelection.classed('selected', d => d.selected)
+            .classed('activated', d => d.activated)
+            .classed('hidden', d => d.visible === false);
+
+        return nodeSelection;
     }
 
     _createEdges(enter) {
@@ -431,6 +403,12 @@ export default class NetworkGraph extends EventEmitter {
             const selection = d3.select(this);
             constructor.update(selection, d, graph);
         });
+
+        edgeSelection.classed('selected', d => d.selected)
+            .classed('activated', d => d.activated)
+            .classed('hidden', d => d.visible === false);
+
+        return edgeSelection;
     }
 
     _transportEvent(eventName) {
