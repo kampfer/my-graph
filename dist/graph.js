@@ -4829,14 +4829,21 @@ class ClickSelectBehavior extends Behavior {
     constructor(...args) {
         super(...args);
         this.events = {
-            'click.node': this.handleClick.bind(this)
+            'click.node': this.handleClick.bind(this),
+            'click.edge': this.handleCliatAtEdge.bind(this)
         };
     }
 
     handleClick(e, d) {
         const ids = [d.id];
         this.graph.selectNodes(ids);
-        this.emit('selectChange.node', ids);
+        this.graph.emit('selectChange.node', ids, d);
+    }
+
+    handleCliatAtEdge(e, d) {
+        const ids = [d.id];
+        this.graph.selectEdges(ids);
+        this.graph.emit('selectChange.edge', ids, d);
     }
 
 }
@@ -4852,6 +4859,79 @@ class ZoomBehavior extends Behavior {
 
     handleZoom({ transform }) {
         this.graph.gSelection.attr('transform', transform);
+    }
+
+}
+
+class Layout {
+
+    constructor(graph) {
+        this.graph = graph;
+    }
+
+    data() {}
+
+    start() {}
+    
+    resume() {}
+
+    stop() {}
+
+}
+
+class ForceLayout extends Layout {
+
+    constructor(...args) {
+        super(...args);
+        
+        this.linkForce = link().id(d => d.id).distance(200);
+
+        this.forceSimulation = simulation();
+
+        // 不要自动启动布局
+        this.forceSimulation.stop()
+            // 配置排斥力，引力，连接力
+            .force('edge', this.linkForce)
+            .force('change', manyBody().strength(-500))
+            .force('x', x$1().strength(0.05))
+            .force('y', y$1().strength(0.05));
+
+        // 更新画布
+        this.forceSimulation.on('tick', () => {
+            console.log('tick');
+            const graph = this.graph;
+            const edgeSelection = graph.edgeSelection;
+            const nodeSelection = graph.nodeSelection;
+
+            if (edgeSelection && graph._displayEdge) {
+                edgeSelection.call(graph._updateEdges, graph);
+            }
+
+            if (nodeSelection) {
+                nodeSelection.call(graph._updateNodes, graph);
+            }
+        });
+
+    }
+
+    data({ nodes, edges }) {
+        this.forceSimulation.nodes(nodes);
+        this.linkForce.links(edges);
+    }
+
+    start() {
+        this.forceSimulation.stop();
+        this.forceSimulation.alpha(1);
+        // d3-force没有start方法，需要自己模拟
+        this.forceSimulation.restart();
+    }
+
+    resume() {
+        this.forceSimulation.restart();
+    }
+
+    stop() {
+        this.this.forceSimulation.stop();
     }
 
 }
@@ -4922,6 +5002,7 @@ class NetworkGraph extends eventemitter3 {
         width = 300,
         height = 150,
         behaviors = [],
+        layout = ForceLayout
     } = {}) {
 
         super();
@@ -4948,33 +5029,7 @@ class NetworkGraph extends eventemitter3 {
 
         this.setViewBox(-width / 2, -height / 2, width, height);
 
-        const simulation$1 = simulation();
-        const linkForce = link().id(d => d.id).distance(200);
-
-        simulation$1.stop();
-
-        simulation$1.force('edge', linkForce)
-            .force('change', manyBody().strength(-500))
-            .force('x', x$1().strength(0.05))
-            .force('y', y$1().strength(0.05));
-
-        const handleTick = () => {
-
-            if (this.edgeSelection && this._displayEdge) {
-                this.edgeSelection.call(this._updateEdges, this);
-            }
-
-            if (this.nodeSelection) {
-                this.nodeSelection.call(this._updateNodes, this);
-            }
-
-        };
-
-        simulation$1.on('tick', handleTick);
-
-        // 力导布局
-        this.forceSimulation = simulation$1;
-        this.linkForce = linkForce;
+        this.layout = new layout(this);
 
         this._d3Drag = drag()
             .on('start', this._transportEvent('dragstart.node'))
@@ -5070,33 +5125,25 @@ class NetworkGraph extends eventemitter3 {
 
         this.toggleEdgeLabel(edges.length <= 100);
 
-        if (restartForce) this.forceSimulation.stop();
-
-        this.forceSimulation.nodes(nodes);
-        this.linkForce.links(edges);
-
         this.gSelection.selectAll('g.edge-group')
             .data(edges, d => d.id)
-            .join(enter => this._createEdges(enter))
-            .classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
+            .join(
+                enter => this._createEdges(enter),
+                update => this._updateEdges(update),
+            );
 
         // 节点
         this.gSelection.selectAll('g.node-group')
             // 必须给key，否则改变元素顺序时，展示会错乱
             .data(nodes, d => d.id)
-            .join(enter => this._createNodes(enter))
-            .classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
+            .join(
+                enter => this._createNodes(enter),
+                update => this._updateNodes(update),
+            );
 
         this.edgeSelection = this.gSelection.selectAll('g.edge-group');
         this.nodeSelection = this.gSelection.selectAll('g.node-group');
         this.edgeLabelSelection = this.gSelection.selectAll('text.edge-label');
-
-        if (this.edgeSelection && this._displayEdge) this.edgeSelection.call(this._updateEdges, this);
-        if (this.nodeSelection) this.nodeSelection.call(this._updateNodes, this);
 
         const selectedNodes = this.nodeSelection.filter(d => d.selected);
         const selectedEdges = this.edgeSelection.filter(d => d.selected);
@@ -5108,10 +5155,8 @@ class NetworkGraph extends eventemitter3 {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        if (restartForce) {
-            this.forceSimulation.alpha(1);
-            this.forceSimulation.restart();
-        }
+        // this.layout.data(data);
+        // this.layout.start();
 
     }
 
@@ -5289,6 +5334,12 @@ class NetworkGraph extends eventemitter3 {
             const selection = select(this);
             constructor.update(selection, d, graph);
         });
+
+        nodeSelection.classed('selected', d => d.selected)
+            .classed('activated', d => d.activated)
+            .classed('hidden', d => d.visible === false);
+
+        return nodeSelection;
     }
 
     _createEdges(enter) {
@@ -5309,6 +5360,12 @@ class NetworkGraph extends eventemitter3 {
             const selection = select(this);
             constructor.update(selection, d, graph);
         });
+
+        edgeSelection.classed('selected', d => d.selected)
+            .classed('activated', d => d.activated)
+            .classed('hidden', d => d.visible === false);
+
+        return edgeSelection;
     }
 
     _transportEvent(eventName) {
