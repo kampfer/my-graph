@@ -86,15 +86,15 @@
         const panel = new dat.GUI({ width: 310 });
 
         const folder1 = panel.addFolder('图元数量');
-        folder1.add(settings, 'node', 0, 1500, 1).listen().onChange(renderRandom);
-        folder1.add(settings, 'edge', 0, 4500, 1).listen().onChange(renderRandom);
+        folder1.add(settings, 'node', 0, 1500, 1).onChange(renderRandom);
+        folder1.add(settings, 'edge', 0, 4500, 1).onChange(renderRandom);
         folder1.open();
 
         const folder2 = panel.addFolder('渲染');
-        folder2.add(settings, 'display edge').listen().onChange(v => graph.toggleEdge(v));
-        folder2.add(settings, 'display edge arrow').listen().onChange(v => graph.toggleEdgeDirection(v));
-        folder2.add(settings, 'display edge label').listen().onChange(v => graph.toggleEdgeLabel(v));
-        folder2.add(settings, 'display node label').listen().onChange(v => graph.toggleNodeLabel(v));
+        folder2.add(settings, 'display edge').onChange(v => graph.toggleEdge(v));
+        folder2.add(settings, 'display edge arrow').onChange(v => graph.toggleEdgeDirection(v));
+        folder2.add(settings, 'display edge label').onChange(v => graph.toggleEdgeLabel(v));
+        folder2.add(settings, 'display node label').onChange(v => graph.toggleNodeLabel(v));
         folder2.open();
 
         renderRandom();

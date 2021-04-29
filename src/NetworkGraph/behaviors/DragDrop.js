@@ -12,7 +12,7 @@ export default class DragDropBehavior extends Behavior {
     }
 
     handleDragstart(event, d) {
-        if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
         d.fx = d.x;
         d.fy = d.y;
     }
@@ -23,7 +23,7 @@ export default class DragDropBehavior extends Behavior {
     }
 
     handleDragend(event, d) {
-        if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0);   // 动画可以停止
         d.fx = null;
         d.fy = null;
     }

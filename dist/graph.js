@@ -4806,7 +4806,7 @@ class DragDropBehavior extends Behavior {
     }
 
     handleDragstart(event, d) {
-        if (!event.active) this.graph.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
         d.fx = d.x;
         d.fy = d.y;
     }
@@ -4817,7 +4817,7 @@ class DragDropBehavior extends Behavior {
     }
 
     handleDragend(event, d) {
-        if (!event.active) this.graph.forceSimulation.alphaTarget(0);   // 动画可以停止
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0);   // 动画可以停止
         d.fx = null;
         d.fy = null;
     }
@@ -5116,7 +5116,7 @@ class NetworkGraph extends eventemitter3 {
     }
 
     render(data, {
-        restartForce = true
+        autoLayout = false
     } = {}) {
 
         console.log('render');
@@ -5155,8 +5155,10 @@ class NetworkGraph extends eventemitter3 {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        // this.layout.data(data);
-        // this.layout.start();
+        this.layout.data(data);
+        if (autoLayout) {
+            this.layout.start();
+        }
 
     }
 
@@ -5173,7 +5175,7 @@ class NetworkGraph extends eventemitter3 {
                 node.selected = false;
             }
         }
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     selectEdges(ids) {
@@ -5182,7 +5184,7 @@ class NetworkGraph extends eventemitter3 {
             const flag = ids.includes(edge.id);
             edge.selected = flag;
         }
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     clearSelect() {
@@ -5193,7 +5195,7 @@ class NetworkGraph extends eventemitter3 {
         for(let edge of edges) {
             edge.selected = false;
         }
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     toggleEdge(flag) {
@@ -5222,7 +5224,7 @@ class NetworkGraph extends eventemitter3 {
             this._displayEdgeDirection = !this._displayEdgeDirection;
         }
         this.svgSelection.classed('no-edge-direction', !this._displayEdgeDirection);
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     toggleNodeLabel(flag) {
@@ -5261,13 +5263,13 @@ class NetworkGraph extends eventemitter3 {
 
     addNode(node) {
         this.data.nodes.push(node);
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     removeNode(node) {
         const index = this.data.nodes.indexOf(node);
         this.data.nodes.splice(index, 1);
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     findNode(fn) {
@@ -5276,13 +5278,13 @@ class NetworkGraph extends eventemitter3 {
 
     addEdge(edge) {
         this.data.edges.push(edge);
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     removeEdge(edge) {
         const index = this.data.edges.indexOf(edge);
         this.data.edges.splice(index, 1);
-        this.rerender({ restartForce: false });
+        this.render(this.data);
     }
 
     findEdge(fn) {
@@ -5346,11 +5348,12 @@ class NetworkGraph extends eventemitter3 {
         const edgeSelection = enter.append(d => {
             const constructor = NetworkGraph.getEdgeConstructor(d.type);
             const selection = constructor.create(d, this);
-
-            selection.on('click', this._transportEvent('click.edge'));
-
             return selection.node();
         });
+
+        edgeSelection.on('click', this._transportEvent('click.edge'));
+        edgeSelection.on('contextmenu', this._transportEvent('contextmenu.edge'));
+        
         return edgeSelection;
     }
 
@@ -5408,7 +5411,7 @@ NetworkGraph.nodeConstrutors = {
             return groupSelection;
         },
         update(selection, datum, graph) {
-            selection.attr('transform', d => `translate(${d.x}, ${d.y})`);
+            selection.attr('transform', d => `translate(${d.x || 0}, ${d.y || 0})`);
         }
     }
 };
@@ -5481,6 +5484,7 @@ NetworkGraph.edgeConstructors = {
             pathSelection.attr('d', this._linkArc);
         },
         linkArc(graph, d) {
+            if (typeof d.source === 'string' || typeof d.target === 'string') return '';
             // const r = 34;
             // const arrowSize = graph._displayEdgeDirection ? 0 : 0;
             const delta = 15;
