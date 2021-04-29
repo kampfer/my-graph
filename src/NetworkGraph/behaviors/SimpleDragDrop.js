@@ -19,7 +19,7 @@ export default class SimpleDragDropBehavior extends Behavior {
     handleDrag(e, d) {
         d.x = e.x;
         d.y = e.y;
-        this.graph.rerender({ restartForce: false });
+        this.graph.render(this.graph.data);
     }
 
     handleDragend(e, d) {
