@@ -21,17 +21,7 @@ export default class ForceLayout extends Layout {
         // 更新画布
         this.forceSimulation.on('tick', () => {
             console.log('tick');
-            const graph = this.graph;
-            const edgeSelection = graph.edgeSelection;
-            const nodeSelection = graph.nodeSelection;
-
-            if (edgeSelection && graph._displayEdge) {
-                edgeSelection.call(graph._updateEdges, graph);
-            }
-
-            if (nodeSelection) {
-                nodeSelection.call(graph._updateNodes, graph);
-            }
+            this.graph.rerender();
         });
 
     }
