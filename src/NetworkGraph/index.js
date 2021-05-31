@@ -7,7 +7,7 @@ import ZoomBehavior from './behaviors/Zoom';
 import Behavior from './behaviors/Behavior';
 import ForceLayout from './layouts/ForceLayout';
 
-import './graph.css';
+import defaultStyle from './style';
 
 export default class NetworkGraph extends EventEmitter {
 
@@ -45,7 +45,8 @@ export default class NetworkGraph extends EventEmitter {
         width = 300,
         height = 150,
         behaviors = [],
-        layout = ForceLayout
+        layout = ForceLayout,
+        style = ''
     } = {}) {
 
         super();
@@ -61,7 +62,13 @@ export default class NetworkGraph extends EventEmitter {
         } else {
             this.svgSelection = d3.create('svg');
         }
-        this.svgSelection.classed('network-graph', true);
+        this.svgSelection
+            .classed('network-graph', true)
+            .attr('xmlns', 'http://www.w3.org/2000/svg')
+            .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+            .append('style')
+            .attr('type', 'text/css')
+            .text(defaultStyle + style);
 
         // d3 selection
         this.defsSelection = this.svgSelection.append('defs');
@@ -333,6 +340,21 @@ export default class NetworkGraph extends EventEmitter {
     findEdge(fn) {
         return this.data.edges.filter(fn);
     }
+
+    toSVG() {
+        const {x, y, width, height} = this.gSelection.node().getBBox();
+        const newNode = this.svgSelection.node().cloneNode(true);
+        newNode.setAttribute('viewBox', `${x}, ${y}, ${width}, ${height}`);
+        newNode.setAttribute('width', width);
+        newNode.setAttribute('height', height);
+        return {
+            width,
+            height,
+            content: newNode.outerHTML,
+        }
+    }
+
+    toDataURL(type, encoderOptions) {}
 
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
