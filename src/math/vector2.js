@@ -2,11 +2,11 @@
 
 export default class Vector2 {
 
-    static fromVectorSum(v1, v2) {
+    static fromAddVectors(v1, v2) {
         return new Vector2(v1.x + v2.x, v1.y + v2.y);
     }
 
-    static fromVectorDifference(v1, v2) {
+    static fromSubVectors(v1, v2) {
         return new Vector2(v1.x - v2.x, v1.y - v2.y); 
     }
 
