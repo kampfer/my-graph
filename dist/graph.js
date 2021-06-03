@@ -4666,99 +4666,6 @@ EventEmitter.EventEmitter = EventEmitter;
 }
 });
 
-function getMiddlePointOfBezierCurve (x1, y1, x2, y2, d) {
-    if (x1 === x2) {
-        return [
-            [x1 - d, (y1 + y2) / 2],
-            [x1 + d, (y1 + y2) / 2]
-        ];
-    }
-
-    if (y1 === y2) {
-        return [
-            [(x1 + x2) / 2, y1 - d],
-            [(x1 + x2) / 2, y1 + d]
-        ];
-    }
-
-    const a = x2 - x1;
-    const b = y2 - y1;
-    const xc = (x1 + x2) / 2;
-    const yc = (y1 + y2) / 2;
-    const r = b / a;
-    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
-    return [-sqrtPart + yc, sqrtPart + yc].map(v => [xc + r * yc - r * v, v])
-}
-
-// p1 p2 p3
-// p1p2 x p1p3
-function cross(x1, y1, x2, y2, x3, y3) {
-    return x1 * y2 + x3 * y1 + x2 * y3 - x3 * y2 - x2 * y1 - x1 * y3;
-}
-
-// 大于0在同侧；小于0在不同侧
-function checkSameSide(x1, y1, x2, y2, x3, y3, x4, y4) {
-    return cross(x1, y1, x2, y2, x3, y3) * cross(x1, y1, x2, y2, x4, y4);
-}
-
-// 1. 叉积=0
-// 2. 在矩形内
-function onSegement(p1, p2, q) {
-    const maxX = p1[0] > p2[0] ? p1[0] : p2[0];
-    const maxY = p1[1] > p2[1] ? p1[1] : p2[1];
-    const minX = p1[0] > p2[0] ? p2[0] : p1[0];
-    const minY = p1[1] > p2[1] ? p2[1] : p1[1];
-    // 叉积为0表示三点共线，但是js中精度可能有点问题，这里放宽条件为0.1
-    return cross(...p1, ...p2, ...q) < 0.1 && (q[0] >= minX && q[0] <= maxX) && (q[1] >= minY && q[1] <= maxY);
-}
-
-function getControlPointOfBezierCurve (p0, p1, p2) {
-    const t = 0.5;
-    const mt = (1 - t);
-    const tt = Math.pow(t, 2);
-    const mtt = Math.pow(mt, 2);
-    const d = 2 * t * mt;
-    return [
-        (p1[0] - tt * p2[0] - mtt * p0[0]) / d,
-        (p1[1] - tt * p2[1] - mtt * p0[1]) / d,
-    ];
-}
-
-function rotatePoint(x, y, dx, dy, angle) {
-    const rr = Math.PI / 180 * angle;
-    const xx = (x - dx) * Math.cos(rr) - (y - dy) * Math.sin(rr) + dx;
-    const yy = (y - dy) * Math.cos(rr) + (x - dx) * Math.sin(rr) + dy;
-    return [xx, yy];
-}
-
-/**
- * 求圆和直线之间的交点
- * 直线方程：y = kx + b
- * 圆的方程：(x - m)² + (y - n)² = r²
- * x1, y1 = 线坐标1, x2, y2 = 线坐标2, m, n = 圆坐标, r = 半径
- */
-function getIntersectPointBetweenCircleAndLine (x1, y1, x2, y2, m, n, r) {
-    const alpha = (y2 - y1) / (x2 - x1);
-    const beta = (x2 * y1 - x1 * y2) / (x2 - x1);
-    const a = 1 + alpha * alpha;
-    const b = -2 * (m - alpha * beta + alpha * n);
-    const c = m * m + beta * beta - 2 * beta * n + n * n - r * r;
-    const s = b * b - 4 * a * c;
-    if (s < 0) {
-        return null;
-    } else if (s === 0) {
-        const u = -b / (2 * a);
-        return [u, alpha * u + beta];
-    } else {
-        const u1 = (-b + Math.sqrt(s)) / (2 * a);
-        const u2 = (-b - Math.sqrt(s)) / (2 * a);
-        return [
-            [u1, alpha * u1 + beta],
-            [u2, alpha * u2 + beta],
-        ];
-    }
-}
-
 class Behavior {
 
     constructor(graph) {
@@ -4898,18 +4805,7 @@ class ForceLayout extends Layout {
 
         // 更新画布
         this.forceSimulation.on('tick', () => {
-            console.log('tick');
-            const graph = this.graph;
-            const edgeSelection = graph.edgeSelection;
-            const nodeSelection = graph.nodeSelection;
-
-            if (edgeSelection && graph._displayEdge) {
-                edgeSelection.call(graph._updateEdges, graph);
-            }
-
-            if (nodeSelection) {
-                nodeSelection.call(graph._updateNodes, graph);
-            }
+            this.graph.rerender();
         });
 
     }
@@ -4936,43 +4832,314 @@ class ForceLayout extends Layout {
 
 }
 
-function styleInject(css, ref) {
-  if ( ref === void 0 ) ref = {};
-  var insertAt = ref.insertAt;
+// https://github.com/mrdoob/three.js/blob/master/src/math/Vector2.js
 
-  if (!css || typeof document === 'undefined') { return; }
+class Vector2 {
 
-  var head = document.head || document.getElementsByTagName('head')[0];
-  var style = document.createElement('style');
-  style.type = 'text/css';
-
-  if (insertAt === 'top') {
-    if (head.firstChild) {
-      head.insertBefore(style, head.firstChild);
-    } else {
-      head.appendChild(style);
+    static fromAddVectors(v1, v2) {
+        return new Vector2(v1.x + v2.x, v1.y + v2.y);
     }
-  } else {
-    head.appendChild(style);
-  }
 
-  if (style.styleSheet) {
-    style.styleSheet.cssText = css;
-  } else {
-    style.appendChild(document.createTextNode(css));
-  }
+    static fromSubVectors(v1, v2) {
+        return new Vector2(v1.x - v2.x, v1.y - v2.y); 
+    }
+
+    static fromArray(arr) {
+        return new Vector2(arr[0], arr[1]);
+    }
+
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+
+    set(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    add(v) {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+    }
+
+    sub(v) {
+        this.x -= v.x;
+        this.y -= v.y;
+        return this;
+    }
+
+    multiply() {}
+
+    divide() {}
+
+    addScalar() {}
+
+    subScalar() {}
+
+    multiplyScalar(scalar) {
+        this.x *= scalar;
+        this.y *= scalar;
+        return this;
+    }
+
+    divideScalar(scalar) {
+        return this.multiplyScalar(1 / scalar);
+    }
+
+    dot(v) {
+        return this.x * v.x + this.y * v.y;
+    }
+
+    cross(v) {
+        return this.x * v.y - this.y * v.x;
+    }
+
+    length() {
+        return Math.sqrt(this.lengthSq());
+    }
+
+    lengthSq() {
+        return this.x * this.x + this.y * this.y;
+    }
+
+    clone() {
+        return new this.constructor(this.x, this.y);
+    }
+
 }
 
-var css_248z = ".network-graph {\r\n    vertical-align: middle;\r\n}\r\n\r\n.network-graph .node-group.hidden,\r\n.network-graph .edge-group.hidden,\r\n.network-graph.no-edge .edge-group,\r\n.network-graph.no-edge-label .edge-label,\r\n.network-graph.no-node-label .node-label {\r\n    display: none;\r\n}\r\n\r\n.network-graph.no-edge-direction .edge {\r\n    marker-start: none!important;\r\n    marker-end: none!important;\r\n}";
-styleInject(css_248z);
+// https://github.com/mrdoob/three.js/blob/master/src/extras/curves/QuadraticBezierCurve.js
+
+class QuadraticBezierCurve {
+
+    constructor(v0, v1, v2) {
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+
+    getPoint(t, target = new Vector2()) {
+        target.set(
+            QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+            QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
+        );
+        return target;
+    }
+
+    getDerivative(t) {
+        const v0 = this.v0;
+        const v1 = this.v1;
+        const v2 = this.v2;
+        const t1 = 1 - t;
+        return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
+    }
+
+    static interpolate(t, p0, p1, p2) {
+        const t1 = 1 - t;
+        return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
+    }
+
+}
+
+function getNodeSize(d) {
+    if (d.size) return d.size;
+    const constructor = NetworkGraph.getNodeConstructor(d.type);
+    return constructor.options.size;
+}
+
+function project(p, p1, p2) {
+    const v1 = Vector2.fromSubVectors(p, p1);
+    const v2 = Vector2.fromSubVectors(p2, p1);
+    const k = v1.dot(v2) / v2.lengthSq();
+    return new Vector2().add(p1).add(v2.multiplyScalar(k));
+}
+
+function getMiddlePointOfBezierCurve(start, end, d) {
+    if (start.x === end.x) {
+        return new Vector2(start.x + d, (start.y + end.y) / 2);
+    }
+
+    if (start.y === end.y) {
+        return new Vector2((start.x + end.x) / 2, start.y + d);
+    }
+
+    const a = end.x - start.x;
+    const b = end.y - start.y;
+    const xc = (start.x + end.x) / 2;
+    const yc = (start.y + end.y) / 2;
+    const r = b / a;
+    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
+    const y = yc - sqrtPart;
+    return new Vector2(xc + r * yc - r * y, y);
+}
+
+function getControlPointOfBezierCurve(p0, p1, p2) {
+    const t = 0.5;
+    const mt = (1 - t);
+    const tt = Math.pow(t, 2);
+    const mtt = Math.pow(mt, 2);
+    const d = 2 * t * mt;
+    return new Vector2(
+        (p1.x - tt * p2.x - mtt * p0.x) / d,
+        (p1.y - tt * p2.y - mtt * p0.y) / d,
+    );
+}
+
+function getIntersectPointBetweenCircleAndLine(p0, p1, c, r) {
+    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
+    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
+    const a = 1 + alpha * alpha;
+    const b = -2 * (c.x - alpha * beta + alpha * c.y);
+    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
+    const s = b * b - 4 * a * _c;
+    if (s < 0) {
+        return null;
+    } else if (s === 0) {
+        const u = -b / (2 * a);
+        return new Vector2(u, alpha * u + beta);
+    } else {
+        const u1 = (-b + Math.sqrt(s)) / (2 * a);
+        const u2 = (-b - Math.sqrt(s)) / (2 * a);
+        return [
+            new Vector2(u1, alpha * u1 + beta),
+            new Vector2(u2, alpha * u2 + beta),
+        ];
+    }
+}
+
+function getIntersectPointBetweenCircleAndSegment(p0, p1, c, r) {
+    let points = getIntersectPointBetweenCircleAndLine(p0, p1, c, r);
+    if (points) {
+        const max = Math.max(p0.x, p1.x);
+        const min = Math.min(p0.x, p1.x);
+        if (Array.isArray(points)) {
+            return points.find(point => point.x >= min && point.x <= max);
+        } else {
+            return points.x >= min && points.x <= max ? points : null;
+        }
+    }
+    return points;
+}
+
+function getNewBezierPoint(start, c1, end, r, target) {
+
+    const curve = new QuadraticBezierCurve(start, c1, end);
+
+    function iter(p) {
+        const j1 = getIntersectPointBetweenCircleAndSegment(c1, p, target, r);
+        const pj1 = project(j1, start, end);
+        const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
+        const p2 = curve.getPoint(k);
+        const delta = p2.clone().sub(j1).length();
+
+        if (delta <= 5) {
+            return p2;
+        } else {
+            return iter(p2);
+        }
+    }
+
+    return iter(target);
+
+}
+
+function linkArc(d) {
+    if (typeof d.source === 'string' || typeof d.target === 'string') return '';
+
+    let source = new Vector2(d.source.x, d.source.y);
+    let target = new Vector2(d.target.x, d.target.y);
+    if (target.x < source.x) [source, target] = [target, source];
+    const delta = 20;
+    const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
+    const c1 = getControlPointOfBezierCurve(source, p1, target);
+    const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
+    const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
+    const c2 = getControlPointOfBezierCurve(p2, p1, p3);
+
+    return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+}
+const Edge = {
+
+    create(datum, graph) {
+        const defsSelection = graph.defsSelection;
+        const markerSelection = defsSelection.selectAll('marker.arrow');
+
+        if (markerSelection.empty()) {
+            markerSelection.data(['default', 'selected'])
+                .join('marker')
+                .attr('id', d => `arrow-${d}`)
+                .attr('class', d => `arrow ${d}`)
+                .attr('viewbox', '-10 -5 10 10')
+                .attr('refX', 0)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('overflow', 'visible')
+                .attr('orient', 'auto-start-reverse')
+                .append('svg:path')
+                .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
+        }
+
+        const g = create('svg:g')
+            .classed('edge-group', true)
+            .datum(datum);
+
+        g.append('svg:path')
+            .attr('stroke', '#000')
+            .classed('edge', true)
+            .attr('id', `edge-${datum.id}`)
+            .attr('fill', 'none');
+
+        g.append('svg:text')
+            .classed('edge-label', true)
+            // .classed('hidden', datum.visible === false)
+            .append('textPath')
+                .attr('xlink:href', `#edge-${datum.id}`)
+                .attr('text-anchor', 'middle')
+                .attr('startOffset', '50%');
+
+        this.update(g, datum, graph);
+
+        return g;
+    },
+
+    update(selection, datum, graph) {
+        const textPathSelection = selection.select('textPath');
+        textPathSelection.text(datum.label ? datum.label : '');
+
+        const pathSelection = selection.select('path.edge');
+        if (datum.target.x < datum.source.x) {  // 反
+            pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+            pathSelection.attr('marker-end', 'none');
+        } else {    // 正
+            pathSelection.attr('marker-start', 'none');
+            pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+        }
+
+        pathSelection.attr('d', linkArc);
+    },
+
+};
+
+const style = `
+.node-group.hidden,
+.edge-group.hidden {
+    display: none;
+}
+`;
 
 class NetworkGraph extends eventemitter3 {
 
     static registerNode(nodeType, config) {
+        if (!NetworkGraph.nodeConstrutors) NetworkGraph.nodeConstrutors = {};
         NetworkGraph.nodeConstrutors[nodeType] = config;
     }
 
     static registerEdge(edgeType, config) {
+        if (!NetworkGraph.edgeConstructors) NetworkGraph.edgeConstructors = {};
         NetworkGraph.edgeConstructors[edgeType] = config;
     }
 
@@ -5002,7 +5169,8 @@ class NetworkGraph extends eventemitter3 {
         width = 300,
         height = 150,
         behaviors = [],
-        layout = ForceLayout
+        layout = ForceLayout,
+        style: style$1 = ''
     } = {}) {
 
         super();
@@ -5018,7 +5186,13 @@ class NetworkGraph extends eventemitter3 {
         } else {
             this.svgSelection = create('svg');
         }
-        this.svgSelection.classed('network-graph', true);
+        this.svgSelection
+            .classed('network-graph', true)
+            .attr('xmlns', 'http://www.w3.org/2000/svg')
+            .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+            .append('style')
+            .attr('type', 'text/css')
+            .text(style + style$1);
 
         // d3 selection
         this.defsSelection = this.svgSelection.append('defs');
@@ -5291,6 +5465,21 @@ class NetworkGraph extends eventemitter3 {
         return this.data.edges.filter(fn);
     }
 
+    toSVG() {
+        const {x, y, width, height} = this.gSelection.node().getBBox();
+        const newNode = this.svgSelection.node().cloneNode(true);
+        newNode.setAttribute('viewBox', `${x}, ${y}, ${width}, ${height}`);
+        newNode.setAttribute('width', width);
+        newNode.setAttribute('height', height);
+        return {
+            width,
+            height,
+            content: newNode.outerHTML,
+        }
+    }
+
+    toDataURL(type, encoderOptions) {}
+
     // 初始化时source是字符串，之后d3将它替换为对象
     _getSourceId(edge) {
         if (typeof edge.source === 'string') {
@@ -5416,147 +5605,7 @@ NetworkGraph.nodeConstrutors = {
     }
 };
 
-NetworkGraph.edgeConstructors = {
-    default: {
-        getNodeSize(d) {
-            if (d.size) return d.size;
-            const constructor = NetworkGraph.getNodeConstructor(d.type);
-            return constructor.options.size;
-        },
-        // TODO：create是否一定需要返回一个node，是否可以直接在svg添加标签？
-        create(datum, graph) {
-            const defsSelection = graph.defsSelection;
-            const markerSelection = defsSelection.selectAll('marker.arrow');
-
-            if (markerSelection.empty()) {
-                markerSelection.data(['default', 'selected'])
-                    .join('marker')
-                    .attr('id', d => `arrow-${d}`)
-                    .attr('class', d => `arrow ${d}`)
-                    .attr('viewbox', '-10 -5 10 10')
-                    .attr('refX', 0)
-                    .attr('refY', 0)
-                    .attr('markerWidth', 6)
-                    .attr('markerHeight', 6)
-                    .attr('overflow', 'visible')
-                    .attr('orient', 'auto-start-reverse')
-                    .append('svg:path')
-                    .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
-            }
-
-            const g = create('svg:g')
-                .classed('edge-group', true)
-                .datum(datum);
-
-            g.append('svg:path')
-                .attr('stroke', '#000')
-                .classed('edge', true)
-                .attr('id', `edge-${datum.id}`)
-                .attr('fill', 'none');
-
-            g.append('svg:text')
-                .classed('edge-label', true)
-                .classed('hidden', datum.visible === false)
-                .append('textPath')
-                .text(datum.label ? datum.label : '')
-                .attr('xlink:href', `#edge-${datum.id}`)
-                .attr('text-anchor', 'middle')
-                .attr('startOffset', '50%');
-
-            return g;
-        },
-        update(selection, datum, graph) {
-            const pathSelection = selection.select('path.edge');
-            // 拖动点时保证箭头的指向正确
-            const startMarker = pathSelection.attr('marker-start');
-            if (datum.target.x < datum.source.x) {  // 反
-                if ((!startMarker || startMarker === 'none')) {
-                    pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-                    pathSelection.attr('marker-end', 'none');
-                }
-            } else {    // 正
-                if (!startMarker || startMarker !== 'none') {
-                    pathSelection.attr('marker-start', 'none');
-                    pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-                }
-            }
-            if (!this._linkArc) this._linkArc = this.linkArc.bind(this, graph);
-            pathSelection.attr('d', this._linkArc);
-        },
-        linkArc(graph, d) {
-            if (typeof d.source === 'string' || typeof d.target === 'string') return '';
-            // const r = 34;
-            // const arrowSize = graph._displayEdgeDirection ? 0 : 0;
-            const delta = 15;
-            const angle = 15;
-
-            let sourceR = this.getNodeSize(d.source),
-                targetR = this.getNodeSize(d.target),
-                startX,
-                startY,
-                endX,
-                endY,
-                sourceX,
-                sourceY,
-                targetX,
-                targetY;
-
-            // 默认起点在左侧，终点在右侧。当拖动节点导致起点和终点位置反转时，计算path时需要反转起点和终点保证文字的朝向正常
-            if (d.target.x < d.source.x) { // 反
-                startX = d.target.x;
-                startY = d.target.y;
-                endX = d.source.x;
-                endY = d.source.y;
-                // sourceR += arrowSize;
-                // targetR = r;
-            } else {    // 正
-                startX = d.source.x;
-                startY = d.source.y;
-                endX = d.target.x;
-                endY = d.target.y;
-                // sourceR = r;
-                // targetR += arrowSize;
-            }
-
-            const intersectSourcePoints = getIntersectPointBetweenCircleAndLine(startX, startY, endX, endY, startX, startY, sourceR);
-            if (onSegement([startX, startY], [endX, endY], intersectSourcePoints[0])) {
-                sourceX = intersectSourcePoints[0][0];
-                sourceY = intersectSourcePoints[0][1];
-            } else {
-                sourceX = intersectSourcePoints[1][0];
-                sourceY = intersectSourcePoints[1][1];
-            }
-
-            const intersectTargetPoints = getIntersectPointBetweenCircleAndLine(startX, startY, endX, endY, endX, endY, targetR);
-            if (onSegement([startX, startY], [endX, endY], intersectTargetPoints[0])) {
-                targetX = intersectTargetPoints[0][0];
-                targetY = intersectTargetPoints[0][1];
-            } else {
-                targetX = intersectTargetPoints[1][0];
-                targetY = intersectTargetPoints[1][1];
-            }
-
-            if (d.sameTotal === 1 || d.sameMiddleLink) {
-                return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
-            } else {
-                [sourceX, sourceY] = rotatePoint(sourceX, sourceY, startX, startY, -angle * d.sameIndexCorrected);
-                [targetX, targetY] = rotatePoint(targetX, targetY, endX, endY, angle * d.sameIndexCorrected);
-
-                const middlePoints = getMiddlePointOfBezierCurve(sourceX, sourceY, targetX, targetY, delta * d.sameIndexCorrected);
-                let middlePoint;
-                if (checkSameSide(startX, startY, endX, endY, sourceX, sourceY, ...middlePoints[0]) > 0) {
-                    middlePoint = middlePoints[0];
-                } else {
-                    middlePoint = middlePoints[1];
-                }
-
-                const controlPoint = getControlPointOfBezierCurve([sourceX, sourceY], middlePoint, [targetX, targetY]);
-
-                return `M ${sourceX} ${sourceY} Q ${controlPoint[0]} ${controlPoint[1]} ${targetX} ${targetY}`;
-            }
-        }
-    }
-};
+NetworkGraph.registerEdge('default', Edge);
 
 NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
 NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);

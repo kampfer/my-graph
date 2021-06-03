@@ -6,16 +6,19 @@ import ClickSelectBehavior from './behaviors/ClickSelect';
 import ZoomBehavior from './behaviors/Zoom';
 import Behavior from './behaviors/Behavior';
 import ForceLayout from './layouts/ForceLayout';
+import edge from './edges/edge';
 
 import defaultStyle from './style';
 
 export default class NetworkGraph extends EventEmitter {
 
     static registerNode(nodeType, config) {
+        if (!NetworkGraph.nodeConstrutors) NetworkGraph.nodeConstrutors = {};
         NetworkGraph.nodeConstrutors[nodeType] = config;
     }
 
     static registerEdge(edgeType, config) {
+        if (!NetworkGraph.edgeConstructors) NetworkGraph.edgeConstructors = {};
         NetworkGraph.edgeConstructors[edgeType] = config;
     }
 
@@ -481,147 +484,7 @@ NetworkGraph.nodeConstrutors = {
     }
 };
 
-NetworkGraph.edgeConstructors = {
-    default: {
-        getNodeSize(d) {
-            if (d.size) return d.size;
-            const constructor = NetworkGraph.getNodeConstructor(d.type);
-            return constructor.options.size;
-        },
-        // TODO：create是否一定需要返回一个node，是否可以直接在svg添加标签？
-        create(datum, graph) {
-            const defsSelection = graph.defsSelection;
-            const markerSelection = defsSelection.selectAll('marker.arrow');
-
-            if (markerSelection.empty()) {
-                markerSelection.data(['default', 'selected'])
-                    .join('marker')
-                    .attr('id', d => `arrow-${d}`)
-                    .attr('class', d => `arrow ${d}`)
-                    .attr('viewbox', '-10 -5 10 10')
-                    .attr('refX', 0)
-                    .attr('refY', 0)
-                    .attr('markerWidth', 6)
-                    .attr('markerHeight', 6)
-                    .attr('overflow', 'visible')
-                    .attr('orient', 'auto-start-reverse')
-                    .append('svg:path')
-                    .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
-            }
-
-            const g = d3.create('svg:g')
-                .classed('edge-group', true)
-                .datum(datum);
-
-            g.append('svg:path')
-                .attr('stroke', '#000')
-                .classed('edge', true)
-                .attr('id', `edge-${datum.id}`)
-                .attr('fill', 'none');
-
-            g.append('svg:text')
-                .classed('edge-label', true)
-                .classed('hidden', datum.visible === false)
-                .append('textPath')
-                .text(datum.label ? datum.label : '')
-                .attr('xlink:href', `#edge-${datum.id}`)
-                .attr('text-anchor', 'middle')
-                .attr('startOffset', '50%');
-
-            return g;
-        },
-        update(selection, datum, graph) {
-            const pathSelection = selection.select('path.edge');
-            // 拖动点时保证箭头的指向正确
-            const startMarker = pathSelection.attr('marker-start');
-            if (datum.target.x < datum.source.x) {  // 反
-                if ((!startMarker || startMarker === 'none')) {
-                    pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-                    pathSelection.attr('marker-end', 'none');
-                }
-            } else {    // 正
-                if (!startMarker || startMarker !== 'none') {
-                    pathSelection.attr('marker-start', 'none');
-                    pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-                }
-            }
-            if (!this._linkArc) this._linkArc = this.linkArc.bind(this, graph);
-            pathSelection.attr('d', this._linkArc);
-        },
-        linkArc(graph, d) {
-            if (typeof d.source === 'string' || typeof d.target === 'string') return '';
-            // const r = 34;
-            // const arrowSize = graph._displayEdgeDirection ? 0 : 0;
-            const delta = 15;
-            const angle = 15;
-
-            let sourceR = this.getNodeSize(d.source),
-                targetR = this.getNodeSize(d.target),
-                startX,
-                startY,
-                endX,
-                endY,
-                sourceX,
-                sourceY,
-                targetX,
-                targetY;
-
-            // 默认起点在左侧，终点在右侧。当拖动节点导致起点和终点位置反转时，计算path时需要反转起点和终点保证文字的朝向正常
-            if (d.target.x < d.source.x) { // 反
-                startX = d.target.x;
-                startY = d.target.y;
-                endX = d.source.x;
-                endY = d.source.y;
-                // sourceR += arrowSize;
-                // targetR = r;
-            } else {    // 正
-                startX = d.source.x;
-                startY = d.source.y;
-                endX = d.target.x;
-                endY = d.target.y;
-                // sourceR = r;
-                // targetR += arrowSize;
-            }
-
-            const intersectSourcePoints = math.getIntersectPointBetweenCircleAndLine(startX, startY, endX, endY, startX, startY, sourceR);
-            if (math.onSegement([startX, startY], [endX, endY], intersectSourcePoints[0])) {
-                sourceX = intersectSourcePoints[0][0];
-                sourceY = intersectSourcePoints[0][1];
-            } else {
-                sourceX = intersectSourcePoints[1][0];
-                sourceY = intersectSourcePoints[1][1];
-            }
-
-            const intersectTargetPoints = math.getIntersectPointBetweenCircleAndLine(startX, startY, endX, endY, endX, endY, targetR);
-            if (math.onSegement([startX, startY], [endX, endY], intersectTargetPoints[0])) {
-                targetX = intersectTargetPoints[0][0];
-                targetY = intersectTargetPoints[0][1];
-            } else {
-                targetX = intersectTargetPoints[1][0];
-                targetY = intersectTargetPoints[1][1];
-            }
-
-            if (d.sameTotal === 1 || d.sameMiddleLink) {
-                return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
-            } else {
-                [sourceX, sourceY] = math.rotatePoint(sourceX, sourceY, startX, startY, -angle * d.sameIndexCorrected);
-                [targetX, targetY] = math.rotatePoint(targetX, targetY, endX, endY, angle * d.sameIndexCorrected);
-
-                const middlePoints = math.getMiddlePointOfBezierCurve(sourceX, sourceY, targetX, targetY, delta * d.sameIndexCorrected);
-                let middlePoint;
-                if (math.checkSameSide(startX, startY, endX, endY, sourceX, sourceY, ...middlePoints[0]) > 0) {
-                    middlePoint = middlePoints[0];
-                } else {
-                    middlePoint = middlePoints[1];
-                }
-
-                const controlPoint = math.getControlPointOfBezierCurve([sourceX, sourceY], middlePoint, [targetX, targetY]);
-
-                return `M ${sourceX} ${sourceY} Q ${controlPoint[0]} ${controlPoint[1]} ${targetX} ${targetY}`;
-            }
-        }
-    }
-};
+NetworkGraph.registerEdge('default', edge);
 
 NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
 NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);

@@ -1,10 +1,19 @@
 import NetworkGraph from '../index';
 import Vector2 from '../../math/Vector2';
+import * as d3 from 'd3';
+import QuadraticBezierCurve from '../../math/QuadraticBezierCurve';
 
 function getNodeSize(d) {
     if (d.size) return d.size;
     const constructor = NetworkGraph.getNodeConstructor(d.type);
     return constructor.options.size;
+}
+
+function project(p, p1, p2) {
+    const v1 = Vector2.fromSubVectors(p, p1);
+    const v2 = Vector2.fromSubVectors(p2, p1);
+    const k = v1.dot(v2) / v2.lengthSq();
+    return new Vector2().add(p1).add(v2.multiplyScalar(k));
 }
 
 function getMiddlePointOfBezierCurve(start, end, d) {
@@ -99,12 +108,17 @@ function getNewBezierPoint(start, c1, end, r, target) {
 function linkArc(d) {
     if (typeof d.source === 'string' || typeof d.target === 'string') return '';
 
-    const delta = 15;
-    const p1 = getMiddlePointOfBezierCurve(start, end, delta * delta * d.sameIndexCorrected);
-    const c1 = getControlPointOfBezierCurve(start, p1, end);
-    const p2 = getNewBezierPoint(start, c1, end, r, start);
-    const p3 = getNewBezierPoint(start, c1, end, r, end);
+    let source = new Vector2(d.source.x, d.source.y);
+    let target = new Vector2(d.target.x, d.target.y);
+    if (target.x < source.x) [source, target] = [target, source];
+    const delta = 20;
+    const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
+    const c1 = getControlPointOfBezierCurve(source, p1, target);
+    const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
+    const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
     const c2 = getControlPointOfBezierCurve(p2, p1, p3);
+
+    return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
 };
 
 const Edge = {

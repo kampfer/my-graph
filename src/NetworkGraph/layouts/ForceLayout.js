@@ -20,7 +20,6 @@ export default class ForceLayout extends Layout {
 
         // 更新画布
         this.forceSimulation.on('tick', () => {
-            console.log('tick');
             this.graph.rerender();
         });
 
