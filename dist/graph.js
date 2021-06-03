@@ -5052,14 +5052,20 @@ function linkArc(d) {
     let source = new Vector2(d.source.x, d.source.y);
     let target = new Vector2(d.target.x, d.target.y);
     if (target.x < source.x) [source, target] = [target, source];
-    const delta = 20;
-    const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
-    const c1 = getControlPointOfBezierCurve(source, p1, target);
-    const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
-    const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
-    const c2 = getControlPointOfBezierCurve(p2, p1, p3);
 
-    return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+    if (d.sameTotal === 1 || d.sameMiddleLink) {
+        source = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
+        target = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
+        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+    } else {
+        const delta = 20;
+        const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
+        const c1 = getControlPointOfBezierCurve(source, p1, target);
+        const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
+        const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
+        const c2 = getControlPointOfBezierCurve(p2, p1, p3);
+        return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+    }
 }
 const Edge = {
 
@@ -5295,6 +5301,8 @@ class NetworkGraph extends eventemitter3 {
 
         console.log('render');
 
+        // 做动画时每次都会调用render，每次调用render就setData是否影响性能？
+        // 是否有必要每次都setData？
         const { nodes, edges } = this.setData(data);
 
         this.toggleEdgeLabel(edges.length <= 100);

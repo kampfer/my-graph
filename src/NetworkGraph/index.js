@@ -174,6 +174,8 @@ export default class NetworkGraph extends EventEmitter {
 
         console.log('render');
 
+        // 做动画时每次都会调用render，每次调用render就setData是否影响性能？
+        // 是否有必要每次都setData？
         const { nodes, edges } = this.setData(data);
 
         this.toggleEdgeLabel(edges.length <= 100);
