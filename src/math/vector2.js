@@ -41,9 +41,17 @@ export default class Vector2 {
 
     divide() {}
 
-    addScalar() {}
+    addScalar(v) {
+        this.x += v;
+        this.y += v;
+        return this;
+    }
 
-    subScalar() {}
+    subScalar(v) {
+        this.x -= v;
+        this.y -= v;
+        return this;
+    }
 
     multiplyScalar(scalar) {
         this.x *= scalar;
@@ -73,6 +81,18 @@ export default class Vector2 {
 
     clone() {
         return new this.constructor(this.x, this.y);
+    }
+
+    // angle > 0 顺时针
+    // angle < 0 逆时针
+    rotateAround(center, angle) {
+        const s = Math.sin(angle),
+              c = Math.cos(angle),
+              x = this.x - center.x,
+              y = this.y - center.y;
+        this.x = c * x - s * y + center.x;
+        this.y = s * x + c * y + center.y;
+        return this;
     }
 
 }

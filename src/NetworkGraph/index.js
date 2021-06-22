@@ -145,8 +145,12 @@ export default class NetworkGraph extends EventEmitter {
             if (sames[directionAlt] === undefined) sames[directionAlt] = 0;
             // sameIndex需要同时考虑同向和反向边
             // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
-            edge.sameIndex = ++sames[direction] + sames[directionAlt];
-
+            if (direction === directionAlt) {
+                edge.sameIndex = ++sames[direction];
+            } else {
+                edge.sameIndex = ++sames[direction] + sames[directionAlt];
+            }
+            
         });
 
         edges.forEach((edge, i) => {

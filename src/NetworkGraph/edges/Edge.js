@@ -112,19 +112,47 @@ function linkArc(d) {
     let target = new Vector2(d.target.x, d.target.y);
     if (target.x < source.x) [source, target] = [target, source];
 
-    if (d.sameTotal === 1 || d.sameMiddleLink) {
-        source = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
-        target = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
-        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+    if (d.source === d.target) {
+
+        const theta = -Math.PI / 3;
+        const r = getNodeSize(source);
+        const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
+        
+        const angle = Math.PI / 12 * d.sameIndexCorrected;
+        const start = j.clone().rotateAround(source, -angle);
+        const end = j.clone().rotateAround(target, angle);
+        
+        const l = 4 * r;
+        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
+        const c1 = new Vector2(
+            (start.x - source.x) / ratio + source.x,
+            (start.y - source.y) / ratio + source.y,
+        );
+        const c2 = new Vector2(
+            (end.x - target.x) / ratio + target.x,
+            (end.y - target.y) / ratio + target.y,
+        );
+
+        return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
+
     } else {
-        const delta = 20;
-        const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
-        const c1 = getControlPointOfBezierCurve(source, p1, target);
-        const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
-        const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
-        const c2 = getControlPointOfBezierCurve(p2, p1, p3);
-        return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+
+        if (d.sameTotal === 1 || d.sameMiddleLink) {
+            source = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
+            target = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
+            return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        } else {
+            const delta = 20;
+            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
+            const c1 = getControlPointOfBezierCurve(source, p1, target);
+            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
+            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
+            const c2 = getControlPointOfBezierCurve(p2, p1, p3);
+            return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+        }
+
     }
+    
 };
 
 const Edge = {

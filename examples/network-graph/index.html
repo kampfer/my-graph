@@ -40,9 +40,9 @@
             let id = random(10);
             let target = randomNode(data);
             let source = randomNode(data);
-            while (source === target) {
-                target = randomNode(data);
-            }
+            // while (source === target) {
+            //     target = randomNode(data);
+            // }
             data.edges.push({
                 id,
                 label: id,
@@ -54,8 +54,8 @@
     }
 
     const settings = {
-        'node': 2,
-        'edge': 15,
+        'node': 1,
+        'edge': 2,
         'display edge': true,
         'display edge arrow': true,
         'display edge label': true,
