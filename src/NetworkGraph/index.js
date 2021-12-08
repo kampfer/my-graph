@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import EventEmitter from 'eventemitter3';
-import * as math from './math.js';
+// import * as math from './math.js';
 import DragDropBehavior from './behaviors/DragDrop';
 import ClickSelectBehavior from './behaviors/ClickSelect';
 import ZoomBehavior from './behaviors/Zoom';
@@ -112,7 +112,7 @@ export default class NetworkGraph extends EventEmitter {
     }
 
     setData(data) {
-        this.data = data;
+        this._data = data;
 
         const { edges, nodes } = data;
         const sames = {};
@@ -180,9 +180,8 @@ export default class NetworkGraph extends EventEmitter {
 
         // 做动画时每次都会调用render，每次调用render就setData是否影响性能？
         // 是否有必要每次都setData？
-        const { nodes, edges } = this.setData(data);
-
-        this.toggleEdgeLabel(edges.length <= 100);
+        // const { nodes, edges } = this.setData(data);
+        const { nodes, edges } = this._data;
 
         this.gSelection.selectAll('g.edge-group')
             .data(edges, d => d.id)
@@ -214,7 +213,7 @@ export default class NetworkGraph extends EventEmitter {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        this.layout.data(data);
+        this.layout.data(this._data);
         if (autoLayout) {
             this.layout.start();
         }
@@ -222,11 +221,11 @@ export default class NetworkGraph extends EventEmitter {
     }
 
     rerender(...args) {
-        this.render(this.data, ...args);
+        this.render(this._data, ...args);
     }
 
     selectNodes(ids) {
-        const { nodes } = this.data;
+        const { nodes } = this._data;
         for(let node of nodes) {
             if (ids.includes(node.id)) {
                 node.selected = true;
@@ -234,27 +233,27 @@ export default class NetworkGraph extends EventEmitter {
                 node.selected = false;
             }
         }
-        this.render(this.data);
+        this.render(this._data);
     }
 
     selectEdges(ids) {
-        const { edges } = this.data;
+        const { edges } = this._data;
         for(let edge of edges) {
             const flag = ids.includes(edge.id);
             edge.selected = flag;
         }
-        this.render(this.data);
+        this.render(this._data);
     }
 
     clearSelect() {
-        const { nodes, edges } = this.data;
+        const { nodes, edges } = this._data;
         for(let node of nodes) {
             node.selected = false;
         }
         for(let edge of edges) {
             edge.selected = false;
         }
-        this.render(this.data);
+        this.render(this._data);
     }
 
     toggleEdge(flag) {
@@ -263,7 +262,7 @@ export default class NetworkGraph extends EventEmitter {
         } else {
             this._displayEdge = !this._displayEdge;
         }
-        this.svgSelection.classed('no-edge', !this._displayEdge);
+        this.gSelection.classed('no-edge', !this._displayEdge);
     }
 
     toggleEdgeLabel(flag) {
@@ -272,7 +271,7 @@ export default class NetworkGraph extends EventEmitter {
         } else {
             this._displayEdgeLabel = !this._displayEdgeLabel;
         }
-        this.svgSelection.classed('no-edge-label', !this._displayEdgeLabel);
+        this.gSelection.classed('no-edge-label', !this._displayEdgeLabel);
     }
 
     // BUG: 布局停止后隐藏箭头，会导致边计算错误
@@ -282,8 +281,8 @@ export default class NetworkGraph extends EventEmitter {
         } else {
             this._displayEdgeDirection = !this._displayEdgeDirection;
         }
-        this.svgSelection.classed('no-edge-direction', !this._displayEdgeDirection);
-        this.render(this.data);
+        this.gSelection.classed('no-edge-direction', !this._displayEdgeDirection);
+        this.render(this._data);
     }
 
     toggleNodeLabel(flag) {
@@ -292,7 +291,7 @@ export default class NetworkGraph extends EventEmitter {
         } else {
             this._displayNodeLabel = !this._displayNodeLabel;
         }
-        this.svgSelection.classed('no-node-label', !this._displayNodeLabel);
+        this.gSelection.classed('no-node-label', !this._displayNodeLabel);
     }
 
     useBehavior(behaviorName) {
@@ -321,33 +320,33 @@ export default class NetworkGraph extends EventEmitter {
     }
 
     addNode(node) {
-        this.data.nodes.push(node);
-        this.render(this.data);
+        this._data.nodes.push(node);
+        this.render(this._data);
     }
 
     removeNode(node) {
-        const index = this.data.nodes.indexOf(node);
-        this.data.nodes.splice(index, 1);
-        this.render(this.data);
+        const index = this._data.nodes.indexOf(node);
+        this._data.nodes.splice(index, 1);
+        this.render(this._data);
     }
 
     findNode(fn) {
-        return this.data.nodes.filter(fn);
+        return this._data.nodes.filter(fn);
     }
 
     addEdge(edge) {
-        this.data.edges.push(edge);
-        this.render(this.data);
+        this._data.edges.push(edge);
+        this.render(this._data);
     }
 
     removeEdge(edge) {
-        const index = this.data.edges.indexOf(edge);
-        this.data.edges.splice(index, 1);
-        this.render(this.data);
+        const index = this._data.edges.indexOf(edge);
+        this._data.edges.splice(index, 1);
+        this.render(this._data);
     }
 
     findEdge(fn) {
-        return this.data.edges.filter(fn);
+        return this._data.edges.filter(fn);
     }
 
     toSVG() {

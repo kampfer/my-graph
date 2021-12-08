@@ -138,9 +138,13 @@ function linkArc(d) {
     } else {
 
         if (d.sameTotal === 1 || d.sameMiddleLink) {
-            source = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
-            target = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
-            return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+            const p1 = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
+            const p2 = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
+            if (p1 && p2) {
+                return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+            } else {
+                return '';
+            }
         } else {
             const delta = 20;
             const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);

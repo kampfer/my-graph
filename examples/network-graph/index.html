@@ -77,7 +77,8 @@
             //     .classed('no-edge-label', !settings['display edge label'])
             //     .classed('no-node-label', !settings['display node label']);
             const data = makeData(settings.node, settings.edge);
-            graph.render(data);
+            graph.setData(data);
+            graph.render();
             console.log(data);
             graph.layout.data(data);
             graph.layout.start();
