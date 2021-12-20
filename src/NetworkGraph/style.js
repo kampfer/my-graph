@@ -6,6 +6,11 @@ const style = `
 .no-edge .edge-group {
     display: none;
 }
+
+.no-edge-direction .edge {
+    marker-start: unset;
+    marker-end: unset;
+}
 `;
 
 export default style;

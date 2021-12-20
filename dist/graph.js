@@ -4805,7 +4805,7 @@ class ForceLayout extends Layout {
 
         // 更新画布
         this.forceSimulation.on('tick', () => {
-            this.graph.rerender();
+            this.graph.render();
         });
 
     }
@@ -5190,6 +5190,11 @@ const style = `
 .no-edge .edge-group {
     display: none;
 }
+
+.no-edge-direction .edge {
+    marker-start: unset;
+    marker-end: unset;
+}
 `;
 
 class NetworkGraph extends eventemitter3 {
@@ -5354,7 +5359,7 @@ class NetworkGraph extends eventemitter3 {
         return data;
     }
 
-    render(data, {
+    render({
         autoLayout = false
     } = {}) {
 
@@ -5400,10 +5405,6 @@ class NetworkGraph extends eventemitter3 {
             this.layout.start();
         }
 
-    }
-
-    rerender(...args) {
-        this.render(this._data, ...args);
     }
 
     selectNodes(ids) {

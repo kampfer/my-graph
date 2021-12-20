@@ -172,7 +172,7 @@ export default class NetworkGraph extends EventEmitter {
         return data;
     }
 
-    render(data, {
+    render({
         autoLayout = false
     } = {}) {
 
@@ -218,10 +218,6 @@ export default class NetworkGraph extends EventEmitter {
             this.layout.start();
         }
 
-    }
-
-    rerender(...args) {
-        this.render(this._data, ...args);
     }
 
     selectNodes(ids) {
