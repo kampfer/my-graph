@@ -18,10 +18,8 @@ export default class ForceLayout extends Layout {
             .force('x', d3.forceX().strength(0.05))
             .force('y', d3.forceY().strength(0.05));
 
-        // 更新画布
-        this.forceSimulation.on('tick', () => {
-            this.graph.render();
-        });
+        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
+        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
 
     }
 

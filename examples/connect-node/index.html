@@ -128,7 +128,8 @@
         // graph.unuseBehavior('zoom');
 
         const data = makeData(10, 0);
-        graph.render(data);
+        graph.setData(data);
+        graph.render();
         graph.layout.data(data);
         graph.layout.start();
     }

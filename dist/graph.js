@@ -4770,9 +4770,10 @@ class ZoomBehavior extends Behavior {
 
 }
 
-class Layout {
+class Layout extends eventemitter3 {
 
     constructor(graph) {
+        super();
         this.graph = graph;
     }
 
@@ -4803,10 +4804,8 @@ class ForceLayout extends Layout {
             .force('x', x$1().strength(0.05))
             .force('y', y$1().strength(0.05));
 
-        // 更新画布
-        this.forceSimulation.on('tick', () => {
-            this.graph.render();
-        });
+        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
+        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
 
     }
 
@@ -5298,7 +5297,7 @@ class NetworkGraph extends eventemitter3 {
             .attr('height', height);
     }
 
-    setData(data) {
+    data(data) {
         this._data = data;
 
         const { edges, nodes } = data;
@@ -5400,10 +5399,10 @@ class NetworkGraph extends eventemitter3 {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        this.layout.data(this._data);
-        if (autoLayout) {
-            this.layout.start();
-        }
+        // this.layout.data(this._data);
+        // if (autoLayout) {
+        //     this.layout.start();
+        // }
 
     }
 
@@ -5663,6 +5662,8 @@ NetworkGraph.nodeConstrutors = {
                 .style('font-size', labelSize)
                 .attr('text-anchor', 'middle')
                 .classed('node-label', true);
+
+            this.update(groupSelection, datum, graph);
 
             return groupSelection;
         },

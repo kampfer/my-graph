@@ -111,7 +111,7 @@ export default class NetworkGraph extends EventEmitter {
             .attr('height', height);
     }
 
-    setData(data) {
+    data(data) {
         this._data = data;
 
         const { edges, nodes } = data;
@@ -213,10 +213,10 @@ export default class NetworkGraph extends EventEmitter {
         this.edgeLabelSelection.filter(d => d.selected).raise();
         selectedNodes.raise();
 
-        this.layout.data(this._data);
-        if (autoLayout) {
-            this.layout.start();
-        }
+        // this.layout.data(this._data);
+        // if (autoLayout) {
+        //     this.layout.start();
+        // }
 
     }
 
@@ -476,6 +476,8 @@ NetworkGraph.nodeConstrutors = {
                 .style('font-size', labelSize)
                 .attr('text-anchor', 'middle')
                 .classed('node-label', true);
+
+            this.update(groupSelection, datum, graph);
 
             return groupSelection;
         },
