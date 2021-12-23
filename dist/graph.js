@@ -4672,6 +4672,7 @@ class Behavior {
         this.graph = graph;
     }
 
+    // 遍历events属性绑定事件：使用key作为事件名，value作为事件处理函数
     use() {
         if (this.events) {
             Object.entries(this.events).forEach(([eventName, callback]) => {
@@ -4713,20 +4714,21 @@ class DragDropBehavior extends Behavior {
     }
 
     handleDragstart(event, d) {
-        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
-        d.fx = d.x;
-        d.fy = d.y;
+        d.x = event.x;
+        d.y = event.y;
+        this.graph.render();
     }
 
     handleDrag(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
+        d.x = event.x;
+        d.y = event.y;
+        this.graph.render();
     }
 
     handleDragend(event, d) {
-        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0);   // 动画可以停止
-        d.fx = null;
-        d.fy = null;
+        d.x = event.x;
+        d.y = event.y;
+        this.graph.render();
     }
 
 }
@@ -5675,7 +5677,7 @@ NetworkGraph.nodeConstrutors = {
 
 NetworkGraph.registerEdge('default', Edge);
 
-NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
+NetworkGraph.registerBehavior('dragDrop', DragDropBehavior);
 NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);
 NetworkGraph.registerBehavior('zoom', ZoomBehavior);
 

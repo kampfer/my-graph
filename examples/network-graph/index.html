@@ -65,7 +65,7 @@
         container: 'body',
         width: window.innerWidth,
         height: window.innerHeight,
-        behaviors: ['drag&drop', 'zoom'],
+        behaviors: ['dragDrop', 'zoom'],
     });
 
     const renderRandom = _.debounce(function () {
@@ -80,8 +80,10 @@
         }
         graph.render();
 
+        // 下载svg文件
         // download(graph.svgSelection.node().outerHTML, 'graph.svg', 'image/svg+xml');
 
+        // 输出为图片
         // const svg = graph.svgSelection.node().outerHTML;
         // const blob = new Blob([svg], {type: 'image/svg+xml'});
         // const url = URL.createObjectURL(blob);
@@ -123,8 +125,6 @@
     folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleNodeLabel(value));
 
     renderRandom();
-
-    init();
 </script>
 
 </body>

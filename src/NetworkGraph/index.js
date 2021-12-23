@@ -489,7 +489,7 @@ NetworkGraph.nodeConstrutors = {
 
 NetworkGraph.registerEdge('default', edge);
 
-NetworkGraph.registerBehavior('drag&drop', DragDropBehavior);
+NetworkGraph.registerBehavior('dragDrop', DragDropBehavior);
 NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);
 NetworkGraph.registerBehavior('zoom', ZoomBehavior);
 

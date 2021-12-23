@@ -12,21 +12,20 @@ export default class DragDropBehavior extends Behavior {
     }
 
     handleDragstart(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0.3).restart();   // 重新激活force tick
+        d.fx = d.x;
+        d.fy = d.y;
     }
 
     handleDrag(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
+        d.fx = event.x;
+        d.fy = event.y;
     }
 
     handleDragend(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
+        if (!event.active) this.graph.layout.forceSimulation.alphaTarget(0);   // 动画可以停止
+        d.fx = null;
+        d.fy = null;
     }
 
 }

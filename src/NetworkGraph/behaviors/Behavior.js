@@ -4,6 +4,7 @@ export default class Behavior {
         this.graph = graph;
     }
 
+    // 遍历events属性绑定事件：使用key作为事件名，value作为事件处理函数
     use() {
         if (this.events) {
             Object.entries(this.events).forEach(([eventName, callback]) => {
