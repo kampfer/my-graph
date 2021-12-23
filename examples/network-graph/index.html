@@ -3,17 +3,24 @@
         padding: 0;
         margin: 0;
     }
+    #pane-container {
+        position: fixed;
+        left: 20px;
+        top: 20px;
+        width: 325px;
+    }
 </style>
 
-<link href="../lib/dat.gui.css" rel="stylesheet" />
-<script src="../lib/dat.gui.min.js"></script>
+<div id="pane-container"></div>
 
+<script src="../lib/tweakpane-3.0.7.min.js"></script>
 <script src="../lib/lodash.min.js"></script>
+<script src="../lib/download.min.js"></script>
+
+<body>
 
 <script type="module">
     import { NetworkGraph } from '../../dist/graph.js';
-
-    const { GUI } = dat;
 
     function randomNode(data) {
         return data.nodes[Math.floor(Math.random() * data.nodes.length)];
@@ -54,6 +61,44 @@
         return data;
     }
 
+    const graph = new NetworkGraph({
+        container: 'body',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        behaviors: ['drag&drop', 'zoom'],
+    });
+
+    const renderRandom = _.debounce(function () {
+        const data = makeData(settings.node, settings.edge);
+        const layout = graph.layout;
+
+        // 布局（不带动画）
+        graph.data(data);
+        layout.data(data);
+        while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+            layout.forceSimulation.tick();
+        }
+        graph.render();
+
+        // download(graph.svgSelection.node().outerHTML, 'graph.svg', 'image/svg+xml');
+
+        // const svg = graph.svgSelection.node().outerHTML;
+        // const blob = new Blob([svg], {type: 'image/svg+xml'});
+        // const url = URL.createObjectURL(blob);
+        // const image = document.createElement('img');
+        // image.addEventListener('load', () => {
+        //     URL.revokeObjectURL(url);
+        //     document.body.appendChild(image);
+        // }, {once: true});
+        // image.src = url;
+
+        // 布局（带动画）
+        // graph.data(data);
+        // layout.data(data);
+        // layout.on('tick', () => graph.render());
+        // layout.start();
+    }, 500);
+
     const settings = {
         'node': 1000,
         'edge': 1000,
@@ -63,51 +108,23 @@
         'display node label': true,
     };
 
-    function init() {
+    const pane = new Tweakpane.Pane({
+        container: document.getElementById('pane-container')
+    });
 
-        const graph = new NetworkGraph({
-            container: 'body',
-            width: window.innerWidth,
-            height: window.innerHeight,
-            behaviors: ['drag&drop', 'zoom'],
-        });
+    const folder1 = pane.addFolder({ title: '图元数量' });
+    folder1.addInput(settings, 'node', { max: 1500, min: 1, step: 1 }).on('change', renderRandom);
+    folder1.addInput(settings, 'edge', { max: 4500, min: 1, step: 1 }).on('change', renderRandom);
 
-        const renderRandom = _.debounce(function () {
-            const data = makeData(settings.node, settings.edge);
-            const layout = graph.layout;
+    const folder2 = pane.addFolder({ title: '渲染' });
+    folder2.addInput(settings, 'display edge').on('change', ({ value }) => graph.toggleEdge(value));
+    folder2.addInput(settings, 'display edge arrow').on('change', ({ value }) => graph.toggleEdgeDirection(value));
+    folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleEdgeLabel(value));
+    folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleNodeLabel(value));
 
-            // 布局（不带动画）
-            graph.data(data);
-            layout.data(data);
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-            }
-            graph.render();
-
-            // 布局（带动画）
-            // graph.data(data);
-            // layout.data(data);
-            // layout.on('tick', () => graph.render());
-            // layout.start();
-        }, 500);
-
-        const panel = new dat.GUI({ width: 310 });
-
-        const folder1 = panel.addFolder('图元数量');
-        folder1.add(settings, 'node', 0, 1500, 1).onChange(renderRandom);
-        folder1.add(settings, 'edge', 0, 4500, 1).onChange(renderRandom);
-        folder1.open();
-
-        const folder2 = panel.addFolder('渲染');
-        folder2.add(settings, 'display edge').onChange(v => graph.toggleEdge(v));
-        folder2.add(settings, 'display edge arrow').onChange(v => graph.toggleEdgeDirection(v));
-        folder2.add(settings, 'display edge label').onChange(v => graph.toggleEdgeLabel(v));
-        folder2.add(settings, 'display node label').onChange(v => graph.toggleNodeLabel(v));
-        folder2.open();
-
-        renderRandom();
-
-    }
+    renderRandom();
 
     init();
 </script>
+
+</body>
