@@ -24,8 +24,14 @@ export default class ForceLayout extends Layout {
     }
 
     data({ nodes, edges }) {
+        this.reset();
         this.forceSimulation.nodes(nodes);
         this.linkForce.links(edges);
+    }
+
+    // 重置状态
+    reset() {
+        this.forceSimulation.alpha(1);
     }
 
     start() {
