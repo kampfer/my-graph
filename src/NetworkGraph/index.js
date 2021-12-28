@@ -93,7 +93,9 @@ export default class NetworkGraph extends EventEmitter {
             .filter(event => !event.ctrlKey)
             .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
             // .scaleExtent([1, 8])
-            .on('zoom', this._transportEvent('zoom'));
+            .on('zoom', this._transportEvent('zoom'))
+            .on('start', this._transportEvent('zoomstart'))
+            .on('end', this._transportEvent('zoomend'));
         this.svgSelection.call(this._d3Zoom);
 
         this.svgSelection.on('mousemove', this._transportEvent('mousemove.canvas'));
