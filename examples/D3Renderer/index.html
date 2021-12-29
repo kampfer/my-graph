@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        function randomNode(data) {
+            return data.nodes[Math.floor(Math.random() * data.nodes.length)];
+        }
+
+        const random = function (n) { // 生成n位长度的字符串
+            var str = "abcdefghijklmnopqrstuvwxyz0123456789"; // 可以作为常量放到random外面
+            var result = "";
+            for (var i = 0; i < n; i++) {
+                result += str[parseInt(Math.random() * str.length)];
+            }
+            return result;
+        }
+
+        function makeData(nodeCount, edgeCount) {
+            const data = { nodes: [], edges: [] };
+            for (let i = 0; i < nodeCount; i++) {
+                let id = random(10);
+                data.nodes.push({
+                    id,
+                    label: id
+                });
+            }
+            for (let i = 0; i < edgeCount; i++) {
+                let id = random(10);
+                let target = randomNode(data);
+                let source = randomNode(data);
+                // while (source === target) {
+                //     target = randomNode(data);
+                // }
+                data.edges.push({
+                    id,
+                    label: id,
+                    source: source.id,
+                    target: target.id,
+                });
+            }
+            return data;
+        }
+    </script>
+    <script type="module">
+        import { D3Renderer, d3 } from '../../dist/graph.js';
+
+        class Node {
+            constructor({ id, label, x = 0, y = 0 } = {}) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.label = label;
+            }
+            create() {
+                // 必须手动绑定数据
+                const groupSelection = d3.create('svg:g').datum(this);
+                const size = 15;
+                const labelSize = 14;
+
+                groupSelection.append('circle')
+                    .classed('node', true)
+                    .attr('r', size);
+
+                groupSelection.append('text')
+                    .text(this.label)
+                    .attr('x', 0)
+                    .attr('y', size + labelSize)
+                    .style('font-size', labelSize)
+                    .attr('text-anchor', 'middle')
+                    .classed('node-label', true);
+
+                this.selection = groupSelection;
+
+                this.update();
+
+                return groupSelection;
+            }
+            update() {
+                this.selection.attr('transform', d => `translate(${d.x || 0}, ${d.y || 0})`);
+            }
+        }
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const renderer = new D3Renderer();
+        renderer.setSize(width, height);
+        renderer.setViewBox(-width / 2, -height / 2, width, height);
+        document.body.appendChild(renderer.canvasNode());
+
+        const data = makeData(1, 1);
+        const graph = {
+            nodes: data.nodes.map(d => new Node(d)),
+            edges: [],
+        };
+        renderer.render(graph);
+    </script>
+</body>
+
+</html>
