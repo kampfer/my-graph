@@ -33,21 +33,25 @@ export default class D3Renderer {
         return this._svgSelection.node();
     }
 
-    render({ nodes, edges }) {
-        
-        this._gSelection.selectAll('g.edge-group')
-            .data(edges, d => d.id)
-            .join(
-                enter => enter.append(d => d.create().node())
-            )
-            .each(d => d.update());
+    render(graph) {
 
-        this._gSelection.selectAll('g.node-group')
+        const nodes = graph.getNodes();
+        const edges = graph.getEdges();
+        
+        // this._gSelection.selectAll('g.edge-group')
+        //     .data(edges, d => d.id)
+        //     .join(
+        //         enter => enter.append(d => d.create().node())
+        //     )
+        //     .each(d => d.update());
+
+        this._gSelection
+            .selectAll('g.node-group')
             .data(nodes, d => d.id)
             .join(
-                enter => enter.append(d => d.create().node())
+                enter => enter.append(d => d.view.enter())
             )
-            .each(d => d.update());
+            .each(d => d.view.update());
 
     }
 

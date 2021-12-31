@@ -57,43 +57,7 @@
         }
     </script>
     <script type="module">
-        import { D3Renderer, d3 } from '../../dist/graph.js';
-
-        class Node {
-            constructor({ id, label, x = 0, y = 0 } = {}) {
-                this.id = id;
-                this.x = x;
-                this.y = y;
-                this.label = label;
-            }
-            create() {
-                // 必须手动绑定数据
-                const groupSelection = d3.create('svg:g').datum(this);
-                const size = 15;
-                const labelSize = 14;
-
-                groupSelection.append('circle')
-                    .classed('node', true)
-                    .attr('r', size);
-
-                groupSelection.append('text')
-                    .text(this.label)
-                    .attr('x', 0)
-                    .attr('y', size + labelSize)
-                    .style('font-size', labelSize)
-                    .attr('text-anchor', 'middle')
-                    .classed('node-label', true);
-
-                this.selection = groupSelection;
-
-                this.update();
-
-                return groupSelection;
-            }
-            update() {
-                this.selection.attr('transform', d => `translate(${d.x || 0}, ${d.y || 0})`);
-            }
-        }
+        import { D3Renderer, d3, Graph, Node, Edge } from '../../dist/graph.js';
 
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -103,10 +67,10 @@
         document.body.appendChild(renderer.canvasNode());
 
         const data = makeData(1, 1);
-        const graph = {
-            nodes: data.nodes.map(d => new Node(d)),
-            edges: [],
-        };
+        const graph = new Graph();
+        data.nodes.forEach(d => {
+            graph.addChild(new Node(d, {}));
+        });
         renderer.render(graph);
     </script>
 </body>

@@ -20983,24 +20983,118 @@ class D3Renderer {
         return this._svgSelection.node();
     }
 
-    render({ nodes, edges }) {
-        
-        this._gSelection.selectAll('g.edge-group')
-            .data(edges, d => d.id)
-            .join(
-                enter => enter.append(d => d.create().node())
-            )
-            .each(d => d.update());
+    render(graph) {
 
-        this._gSelection.selectAll('g.node-group')
+        const nodes = graph.getNodes();
+        const edges = graph.getEdges();
+        
+        // this._gSelection.selectAll('g.edge-group')
+        //     .data(edges, d => d.id)
+        //     .join(
+        //         enter => enter.append(d => d.create().node())
+        //     )
+        //     .each(d => d.update());
+
+        this._gSelection
+            .selectAll('g.node-group')
             .data(nodes, d => d.id)
             .join(
-                enter => enter.append(d => d.create().node())
+                enter => enter.append(d => d.view.enter())
             )
-            .each(d => d.update());
+            .each(d => d.view.update());
 
     }
 
 }
 
-export { D3Renderer, NetworkGraph, index$5 as d3 };
+class Object$1 {
+
+    constructor() {
+        this._children = [];
+    }
+
+    addChild(child) {
+        if (child) this._children.push(child);
+    }
+
+    removeChild(child) {
+        const index = this._children.findIndex(child);
+        if (index > -1) this._children.splice(index, 1);
+    }
+
+    eachChild(callback) {
+        this._children.forEach((...args) => callback(...args));
+    }
+
+    filterChild(callback) {
+        return this._children.filter(callback);
+    }
+
+}
+
+class Graph extends Object$1 {
+
+    type = 'graph'
+
+    constructor(...args) {
+        super(...args);
+    }
+
+    getNodes() {
+        return this.filterChild(d => d.type === 'node');
+    }
+
+    getEdges() {
+        return this.filterChild(d => d.type === 'edge');
+    }
+
+}
+
+class Node$2 {
+
+    type = 'node'
+
+    constructor({
+        id,
+        x = 0,
+        y = 0,
+        label = ''
+    } = {}, view) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.label = label;
+        
+        this.view = view;
+    }
+
+    render(selection) {
+        let circleSelection, textSelection;
+        if (!selection) {
+            selection = create('svg:g').datum(this);
+            circleSelection = selection.append('circle');
+            textSelection = selection.append('text');
+        } else {
+            circleSelection =  selection.select('circle');
+            textSelection = selection.select('text');
+        }
+
+        const size = 15;
+        const labelSize = 14;
+        circleSelection
+            .attr('r', size);
+        textSelection
+            .text(label)
+            .attr('x', 0)
+            .attr('y', size + labelSize)
+            .style('font-size', labelSize)
+            .attr('text-anchor', 'middle');
+
+        return selection;
+    }
+
+}
+
+class Edge$1 {}
+
+export { D3Renderer, Edge$1 as Edge, Graph, NetworkGraph, Node$2 as Node, index$5 as d3 };
