@@ -29,7 +29,7 @@ export default class D3Renderer {
             .attr('height', height);
     }
 
-    canvasNode() {
+    domElement() {
         return this._svgSelection.node();
     }
 
@@ -37,21 +37,24 @@ export default class D3Renderer {
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
-        
-        // this._gSelection.selectAll('g.edge-group')
-        //     .data(edges, d => d.id)
-        //     .join(
-        //         enter => enter.append(d => d.create().node())
-        //     )
-        //     .each(d => d.update());
 
         this._gSelection
-            .selectAll('g.node-group')
+            .selectAll('g.edge')
+            .data(edges, d => d.id)
+            .join(enter => enter.append('g').classed('edge', true))
+            .each(function(d) {
+                const selection = d3.select(this);
+                d.render(selection);
+            });
+
+        this._gSelection
+            .selectAll('g.node')
             .data(nodes, d => d.id)
-            .join(
-                enter => enter.append(d => d.view.enter())
-            )
-            .each(d => d.view.update());
+            .join(enter => enter.append('g').classed('node', true))
+            .each(function(d) {
+                const selection = d3.select(this);
+                d.render(selection);
+            });
 
     }
 

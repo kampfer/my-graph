@@ -20979,7 +20979,7 @@ class D3Renderer {
             .attr('height', height);
     }
 
-    canvasNode() {
+    domElement() {
         return this._svgSelection.node();
     }
 
@@ -20987,21 +20987,24 @@ class D3Renderer {
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
-        
-        // this._gSelection.selectAll('g.edge-group')
-        //     .data(edges, d => d.id)
-        //     .join(
-        //         enter => enter.append(d => d.create().node())
-        //     )
-        //     .each(d => d.update());
 
         this._gSelection
-            .selectAll('g.node-group')
+            .selectAll('g.edge')
+            .data(edges, d => d.id)
+            .join(enter => enter.append('g').classed('edge', true))
+            .each(function(d) {
+                const selection = select(this);
+                d.render(selection);
+            });
+
+        this._gSelection
+            .selectAll('g.node')
             .data(nodes, d => d.id)
-            .join(
-                enter => enter.append(d => d.view.enter())
-            )
-            .each(d => d.view.update());
+            .join(enter => enter.append('g').classed('node', true))
+            .each(function(d) {
+                const selection = select(this);
+                d.render(selection);
+            });
 
     }
 
@@ -21059,42 +21062,134 @@ class Node$2 {
         x = 0,
         y = 0,
         label = ''
-    } = {}, view) {
+    } = {}) {
         this.id = id;
         this.x = x;
         this.y = y;
         this.label = label;
-        
-        this.view = view;
     }
 
     render(selection) {
-        let circleSelection, textSelection;
-        if (!selection) {
-            selection = create('svg:g').datum(this);
-            circleSelection = selection.append('circle');
-            textSelection = selection.append('text');
-        } else {
-            circleSelection =  selection.select('circle');
-            textSelection = selection.select('text');
-        }
-
         const size = 15;
         const labelSize = 14;
-        circleSelection
-            .attr('r', size);
-        textSelection
-            .text(label)
-            .attr('x', 0)
-            .attr('y', size + labelSize)
-            .style('font-size', labelSize)
-            .attr('text-anchor', 'middle');
+        const label = this.label;
+        const x = this.x;
+        const y = this.y;
 
-        return selection;
+        selection
+            .attr('transform', `translate(${x}, ${y})`);
+
+        selection.selectAll('circle')
+            .data([size])
+            .join('circle')
+            .attr('r', d => d);
+
+        selection.selectAll('text')
+            .data([label])
+            .join('text')
+                .text(d => d)
+                .attr('x', 0)
+                .attr('y', size + labelSize)
+                .style('font-size', labelSize)
+                .attr('text-anchor', 'middle');
     }
 
 }
 
-class Edge$1 {}
+class Edge$1 {
+    
+}
 
-export { D3Renderer, Edge$1 as Edge, Graph, NetworkGraph, Node$2 as Node, index$5 as d3 };
+class Layout$1 extends eventemitter3 {
+
+    constructor(graph) {
+        super();
+        this.graph = graph;
+    }
+
+    data() {}
+
+    start() {}
+    
+    resume() {}
+
+    stop() {}
+
+}
+
+class ForceLayout$1 extends Layout$1 {
+
+    constructor(...args) {
+        super(...args);
+        
+        this.linkForce = link().id(d => d.id).distance(200);
+
+        this.forceSimulation = simulation();
+
+        // 不要自动启动布局
+        this.forceSimulation.stop()
+            // 配置排斥力，引力，连接力
+            .force('edge', this.linkForce)
+            .force('change', manyBody().strength(-500))
+            .force('x', x$2().strength(0.05))
+            .force('y', y$2().strength(0.05));
+
+        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
+        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
+
+    }
+
+    data({ nodes, edges }) {
+        this.reset();
+        this.forceSimulation.nodes(nodes);
+        this.linkForce.links(edges);
+    }
+
+    // 重置状态
+    reset() {
+        this.forceSimulation.alpha(1);
+    }
+
+    start() {
+        this.forceSimulation.stop();
+        this.forceSimulation.alpha(1);
+        // d3-force没有start方法，需要自己模拟
+        this.forceSimulation.restart();
+    }
+
+    resume() {
+        this.forceSimulation.restart();
+    }
+
+    stop() {
+        this.this.forceSimulation.stop();
+    }
+
+}
+
+class ZoomControl extends eventemitter3 {
+
+    constructor(rootElem, wrapperElem) {
+        super();
+
+        const selection = select(wrapperElem);
+        const { width, height } = rootElem.getBoundingClientRect();
+        const d3Zoom = zoom()
+            .filter(event => !event.ctrlKey)
+            .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
+            // .scaleExtent([1, 8])
+            .on('zoom', event => {
+                const { transform } = event;
+                selection.attr('transform', transform);
+                this.emit('zoom', event);
+            })
+            .on('start', event => this.emit('zoomstart', event))
+            .on('end', event => this.emit('zoomend', event));
+
+        select(rootElem).call(d3Zoom);
+        this.d3Zoom = d3Zoom;
+    }
+
+}
+
+export { D3Renderer, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, ZoomControl, index$5 as d3 };

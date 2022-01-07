@@ -57,21 +57,39 @@
         }
     </script>
     <script type="module">
-        import { D3Renderer, d3, Graph, Node, Edge } from '../../dist/graph.js';
+        import { D3Renderer, d3, Graph, Node, Edge, ForceLayout, ZoomControl } from '../../dist/graph.js';
 
         const width = window.innerWidth;
         const height = window.innerHeight;
         const renderer = new D3Renderer();
         renderer.setSize(width, height);
         renderer.setViewBox(-width / 2, -height / 2, width, height);
-        document.body.appendChild(renderer.canvasNode());
+        document.body.appendChild(renderer.domElement());
 
-        const data = makeData(1, 1);
-        const graph = new Graph();
-        data.nodes.forEach(d => {
-            graph.addChild(new Node(d, {}));
+        const domElement = renderer.domElement();
+        const gElement = renderer.domElement().querySelector('g');
+        const control = new ZoomControl(domElement, gElement);
+        control.on('zoomstart', () => {
+            if (graph.getEdges().length + graph.getNodes().length > 2000) {
+                // graph.toggleEdge(false);     
+            }
         });
+
+        const data = makeData(3, 0);
+        const graph = new Graph();
+        const layout = new ForceLayout(graph);
+        data.nodes.forEach(d => graph.addChild(new Node(d)));
+        data.edges.forEach(d => graph.addChild(new Edge(d)));
+        layout.data({
+            nodes: graph.getNodes(),
+            edges: graph.getEdges()
+        });
+        while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+            layout.forceSimulation.tick();
+        }
         renderer.render(graph);
+        // layout.on('tick', () => renderer.render(graph));
+        // layout.start();
     </script>
 </body>
 
