@@ -20985,6 +20985,8 @@ class D3Renderer {
 
     render(graph) {
 
+        console.log('graph render');
+
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
 
@@ -21002,6 +21004,7 @@ class D3Renderer {
             .data(nodes, d => d.id)
             .join(enter => enter.append('g').classed('node', true))
             .each(function(d) {
+                console.log('graph node render');
                 const selection = select(this);
                 d.render(selection);
             });
@@ -21192,4 +21195,27 @@ class ZoomControl extends eventemitter3 {
 
 }
 
-export { D3Renderer, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, ZoomControl, index$5 as d3 };
+class DragControl extends eventemitter3 {
+
+    constructor(renderer, graph) {
+        super();
+
+        const updatePositionEndRender= function(event, d) {
+            d.x = event.x;
+            d.y = event.y;
+            renderer.render(graph);
+        };
+
+        const d3Drag = drag()
+            .on('start', updatePositionEndRender)
+            .on('drag', updatePositionEndRender)
+            .on('end', updatePositionEndRender);
+
+        select(renderer.domElement())
+            .selectAll('g.node')
+                .call(d3Drag);
+    }
+
+}
+
+export { D3Renderer, DragControl, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, ZoomControl, index$5 as d3 };

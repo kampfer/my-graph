@@ -35,6 +35,8 @@ export default class D3Renderer {
 
     render(graph) {
 
+        console.log('graph render');
+
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
 
@@ -52,6 +54,7 @@ export default class D3Renderer {
             .data(nodes, d => d.id)
             .join(enter => enter.append('g').classed('node', true))
             .each(function(d) {
+                console.log('graph node render');
                 const selection = d3.select(this);
                 d.render(selection);
             });

@@ -57,7 +57,7 @@
         }
     </script>
     <script type="module">
-        import { D3Renderer, d3, Graph, Node, Edge, ForceLayout, ZoomControl } from '../../dist/graph.js';
+        import { D3Renderer, d3, Graph, Node, Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
 
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -65,6 +65,23 @@
         renderer.setSize(width, height);
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         document.body.appendChild(renderer.domElement());
+
+        const data = makeData(100, 0);
+        const graph = new Graph();
+        const layout = new ForceLayout(graph);
+        data.nodes.forEach(d => graph.addChild(new Node(d)));
+        data.edges.forEach(d => graph.addChild(new Edge(d)));
+        layout.data({
+            nodes: graph.getNodes(),
+            edges: graph.getEdges()
+        });
+        // while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+        //     layout.forceSimulation.tick();
+        //     console.log('layout tick');
+        // }
+        // renderer.render(graph);
+        layout.on('tick', () => renderer.render(graph));
+        layout.start();
 
         const domElement = renderer.domElement();
         const gElement = renderer.domElement().querySelector('g');
@@ -75,21 +92,10 @@
             }
         });
 
-        const data = makeData(3, 0);
-        const graph = new Graph();
-        const layout = new ForceLayout(graph);
-        data.nodes.forEach(d => graph.addChild(new Node(d)));
-        data.edges.forEach(d => graph.addChild(new Edge(d)));
-        layout.data({
-            nodes: graph.getNodes(),
-            edges: graph.getEdges()
-        });
-        while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-            layout.forceSimulation.tick();
-        }
-        renderer.render(graph);
-        // layout.on('tick', () => renderer.render(graph));
-        // layout.start();
+        layout.on('end', () => {
+            const dragControl = new DragControl(renderer, graph);
+        })
+        // const dragControl = new DragControl(renderer, graph);
     </script>
 </body>
 
