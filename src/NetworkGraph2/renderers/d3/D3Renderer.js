@@ -1,36 +1,61 @@
 import * as d3 from 'd3';
+import node from './node';
+import edge from './edge';
 
 export default class D3Renderer {
 
     constructor({
-        svg
+        svg,
+        elementDefines = [
+            node,
+            edge
+        ]
     } = {}) {
         if (svg && svg instanceof SVGElement) {
-            this._svgSelection = d3.select(svg);
+            this.rootSelection = d3.select(svg);
         } else {
-            this._svgSelection = d3.create('svg');
+            this.rootSelection = d3.create('svg');
         }
 
-        this._svgSelection
+        this.rootSelection
             .classed('network-graph', true)
             .attr('xmlns', 'http://www.w3.org/2000/svg')
             .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-        this._gSelection = this._svgSelection.append('g');
+        this.rootSelection.append('defs');
+        this._gSelection = this.rootSelection.append('g');
+
+        elementDefines.forEach(def => this.registerElement(def.type, def));
     }
 
     setViewBox(x, y, width, height) {
-        this._svgSelection.attr('viewBox', [x, y, width, height]);
+        this.rootSelection.attr('viewBox', [x, y, width, height]);
     }
 
     setSize(width, height) {
-        this._svgSelection
+        this.rootSelection
             .attr('width', width)
             .attr('height', height);
     }
 
     domElement() {
-        return this._svgSelection.node();
+        return this.rootSelection.node();
+    }
+
+    registerElement(name, def) {
+        if (!this._elemDefs) this._elemDefs = {};
+        if (this._elemDefs[name]) return;
+        this._elemDefs[name] = def;
+    }
+
+    unregisterElement(name) {
+        if (this._elemDefs) delete this._elemDefs[name];
+    }
+
+    getElementDef(name) {
+        const def = this._elemDefs ? this._elemDefs[name] : null;
+        if (def) return def;
+        return null;
     }
 
     render(graph) {
@@ -39,24 +64,38 @@ export default class D3Renderer {
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
+        const self = this;
 
         this._gSelection
             .selectAll('g.edge')
             .data(edges, d => d.id)
-            .join(enter => enter.append('g').classed('edge', true))
+            .join(
+                enter => enter.append('g')
+                    .classed('edge', true)
+                    .each(function(d) {
+                        const def = self.getElementDef(d.type);
+                        def.create(d, d3.select(this), self);
+                    })
+            )
             .each(function(d) {
-                const selection = d3.select(this);
-                d.render(selection);
+                const def = self.getElementDef(d.type);
+                def.update(d, d3.select(this), self);
             });
 
         this._gSelection
             .selectAll('g.node')
             .data(nodes, d => d.id)
-            .join(enter => enter.append('g').classed('node', true))
+            .join(
+                enter => enter.append('g')
+                    .classed('node', true)
+                    .each(function(d) {
+                        const def = self.getElementDef(d.type);
+                        def.create(d, d3.select(this), self);
+                    })
+            )
             .each(function(d) {
-                console.log('graph node render');
-                const selection = d3.select(this);
-                d.render(selection);
+                const def = self.getElementDef(d.type);
+                def.update(d, d3.select(this), self);
             });
 
     }

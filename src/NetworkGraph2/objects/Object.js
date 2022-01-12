@@ -13,12 +13,19 @@ export default class Object {
         if (index > -1) this._children.splice(index, 1);
     }
 
-    eachChild(callback) {
-        this._children.forEach((...args) => callback(...args));
+    filterChild(callback) {
+        const children = [];
+        this.traverse(child => {
+            if (callback(child) === true) children.push(child);
+        });
+        return children;
     }
 
-    filterChild(callback) {
-        return this._children.filter(callback);
+    traverse(callback) {
+        this._children.forEach(child => {
+            callback(child);
+            if (child.traverse) child.traverse(callback);
+        });
     }
 
 }

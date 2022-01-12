@@ -20950,37 +20950,300 @@ NetworkGraph.registerBehavior('zoom', ZoomBehavior);
 
 NetworkGraph.Behavior = Behavior;
 
+var node = {
+    type: 'node',
+    create(datum, selection) {
+        selection.append('circle');
+        selection.append('text');
+    },
+    update(datum, selection) {
+        const x = datum.x;
+        const y = datum.y;
+        const size = 15;
+        const labelSize = 14;
+        const label = datum.label;
+
+        selection
+            .attr('transform', `translate(${x}, ${y})`);
+
+        selection.select('circle')
+            .attr('r', size);
+
+        selection.select('text')
+            .text(label)
+            .attr('x', 0)
+            .attr('y', size + labelSize)
+            .style('font-size', labelSize)
+            .attr('text-anchor', 'middle');
+    }
+};
+
+function getNodeSize$1(d) {
+    if (d.size) return d.size;
+}
+
+function project$1(p, p1, p2) {
+    const v1 = Vector2.fromSubVectors(p, p1);
+    const v2 = Vector2.fromSubVectors(p2, p1);
+    const k = v1.dot(v2) / v2.lengthSq();
+    return new Vector2().add(p1).add(v2.multiplyScalar(k));
+}
+
+function getMiddlePointOfBezierCurve$1(start, end, d) {
+    if (start.x === end.x) {
+        return new Vector2(start.x + d, (start.y + end.y) / 2);
+    }
+
+    if (start.y === end.y) {
+        return new Vector2((start.x + end.x) / 2, start.y + d);
+    }
+
+    const a = end.x - start.x;
+    const b = end.y - start.y;
+    const xc = (start.x + end.x) / 2;
+    const yc = (start.y + end.y) / 2;
+    const r = b / a;
+    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
+    const y = yc - sqrtPart;
+    return new Vector2(xc + r * yc - r * y, y);
+}
+
+function getControlPointOfBezierCurve$1(p0, p1, p2) {
+    const t = 0.5;
+    const mt = (1 - t);
+    const tt = Math.pow(t, 2);
+    const mtt = Math.pow(mt, 2);
+    const d = 2 * t * mt;
+    return new Vector2(
+        (p1.x - tt * p2.x - mtt * p0.x) / d,
+        (p1.y - tt * p2.y - mtt * p0.y) / d,
+    );
+}
+
+function getIntersectPointBetweenCircleAndLine$1(p0, p1, c, r) {
+    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
+    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
+    const a = 1 + alpha * alpha;
+    const b = -2 * (c.x - alpha * beta + alpha * c.y);
+    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
+    const s = b * b - 4 * a * _c;
+    if (s < 0) {
+        return null;
+    } else if (s === 0) {
+        const u = -b / (2 * a);
+        return new Vector2(u, alpha * u + beta);
+    } else {
+        const u1 = (-b + Math.sqrt(s)) / (2 * a);
+        const u2 = (-b - Math.sqrt(s)) / (2 * a);
+        return [
+            new Vector2(u1, alpha * u1 + beta),
+            new Vector2(u2, alpha * u2 + beta),
+        ];
+    }
+}
+
+function getIntersectPointBetweenCircleAndSegment$1(p0, p1, c, r) {
+    let points = getIntersectPointBetweenCircleAndLine$1(p0, p1, c, r);
+    if (points) {
+        const max = Math.max(p0.x, p1.x);
+        const min = Math.min(p0.x, p1.x);
+        if (Array.isArray(points)) {
+            return points.find(point => point.x >= min && point.x <= max);
+        } else {
+            return points.x >= min && points.x <= max ? points : null;
+        }
+    }
+    return points;
+}
+
+function getNewBezierPoint$1(start, c1, end, r, target) {
+
+    const curve = new QuadraticBezierCurve(start, c1, end);
+
+    function iter(p) {
+        const j1 = getIntersectPointBetweenCircleAndSegment$1(c1, p, target, r);
+        const pj1 = project$1(j1, start, end);
+        const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
+        const p2 = curve.getPoint(k);
+        const delta = p2.clone().sub(j1).length();
+
+        if (delta <= 5) {
+            return p2;
+        } else {
+            return iter(p2);
+        }
+    }
+
+    return iter(target);
+
+}
+
+function linkArc$1(d) {
+    // debugger;
+    // if (typeof d.source === 'string' || typeof d.target === 'string') return '';
+
+    let source = new Vector2(d.source.x, d.source.y);
+    let target = new Vector2(d.target.x, d.target.y);
+    if (target.x < source.x) [source, target] = [target, source];
+
+    if (d.source === d.target) {
+
+        const theta = -Math.PI / 3;
+        const r = getNodeSize$1(d.source);
+        const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
+        
+        const angle = Math.PI / 12 * d.sameIndexCorrected;
+        const start = j.clone().rotateAround(source, -angle);
+        const end = j.clone().rotateAround(target, angle);
+        
+        const l = 4 * r;
+        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
+        const c1 = new Vector2(
+            (start.x - source.x) / ratio + source.x,
+            (start.y - source.y) / ratio + source.y,
+        );
+        const c2 = new Vector2(
+            (end.x - target.x) / ratio + target.x,
+            (end.y - target.y) / ratio + target.y,
+        );
+
+        return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
+
+    } else {
+
+        if (d.sameTotal === 1 || d.sameMiddleLink) {
+            const p1 = getIntersectPointBetweenCircleAndSegment$1(source, target, source, getNodeSize$1(d.source));
+            const p2 = getIntersectPointBetweenCircleAndSegment$1(source, target, target, getNodeSize$1(d.target));
+            if (p1 && p2) {
+                return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+            } else {
+                return '';
+            }
+        } else {
+            const delta = 20;
+            const p1 = getMiddlePointOfBezierCurve$1(source, target, delta * d.sameIndexCorrected);
+            const c1 = getControlPointOfBezierCurve$1(source, p1, target);
+            const p2 = getNewBezierPoint$1(source, c1, target, getNodeSize$1(d.source), source);
+            const p3 = getNewBezierPoint$1(source, c1, target, getNodeSize$1(d.target), target);
+            const c2 = getControlPointOfBezierCurve$1(p2, p1, p3);
+            return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+        }
+
+    }
+    
+}
+var edge = {
+
+    type: 'edge',
+
+    create(datum, selection, renderer) {
+        let defsSelection = renderer.rootSelection.select('defs');
+        if (defsSelection.empty()) defsSelection = renderer.rootSelection.append('defs');
+
+        const markerSelection = defsSelection.selectAll('marker.arrow');
+        if (markerSelection.empty()) {
+            markerSelection.data(['default', 'selected'])
+                .join('marker')
+                .attr('id', d => `arrow-${d}`)
+                .attr('class', d => `arrow ${d}`)
+                .attr('viewbox', '-10 -5 10 10')
+                .attr('refX', 0)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('overflow', 'visible')
+                .attr('orient', 'auto-start-reverse')
+                .append('svg:path')
+                .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
+        }
+
+        selection.append('path')
+            .attr('stroke', '#000')
+            .classed('edge', true)
+            .attr('id', `edge-${datum.id}`)
+            .attr('fill', 'none');
+
+        selection.append('text')
+            .classed('edge-label', true)
+            // .classed('hidden', datum.visible === false)
+            .append('textPath')
+                .attr('xlink:href', `#edge-${datum.id}`)
+                .attr('text-anchor', 'middle')
+                .attr('startOffset', '50%');
+    },
+
+    update(datum, selection, renderer) {
+        const textPathSelection = selection.select('textPath');
+        textPathSelection.text(datum.label ? datum.label : '');
+
+        const pathSelection = selection.select('path.edge');
+        if (datum.target.x < datum.source.x) {  // 反
+            pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+            pathSelection.attr('marker-end', 'none');
+        } else {    // 正
+            pathSelection.attr('marker-start', 'none');
+            pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+        }
+
+        pathSelection.attr('d', linkArc$1);
+    }
+
+};
+
 class D3Renderer {
 
     constructor({
-        svg
+        svg,
+        elementDefines = [
+            node,
+            edge
+        ]
     } = {}) {
         if (svg && svg instanceof SVGElement) {
-            this._svgSelection = select(svg);
+            this.rootSelection = select(svg);
         } else {
-            this._svgSelection = create('svg');
+            this.rootSelection = create('svg');
         }
 
-        this._svgSelection
+        this.rootSelection
             .classed('network-graph', true)
             .attr('xmlns', 'http://www.w3.org/2000/svg')
             .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-        this._gSelection = this._svgSelection.append('g');
+        this.rootSelection.append('defs');
+        this._gSelection = this.rootSelection.append('g');
+
+        elementDefines.forEach(def => this.registerElement(def.type, def));
     }
 
     setViewBox(x, y, width, height) {
-        this._svgSelection.attr('viewBox', [x, y, width, height]);
+        this.rootSelection.attr('viewBox', [x, y, width, height]);
     }
 
     setSize(width, height) {
-        this._svgSelection
+        this.rootSelection
             .attr('width', width)
             .attr('height', height);
     }
 
     domElement() {
-        return this._svgSelection.node();
+        return this.rootSelection.node();
+    }
+
+    registerElement(name, def) {
+        if (!this._elemDefs) this._elemDefs = {};
+        if (this._elemDefs[name]) return;
+        this._elemDefs[name] = def;
+    }
+
+    unregisterElement(name) {
+        if (this._elemDefs) delete this._elemDefs[name];
+    }
+
+    getElementDef(name) {
+        const def = this._elemDefs ? this._elemDefs[name] : null;
+        if (def) return def;
+        return null;
     }
 
     render(graph) {
@@ -20989,24 +21252,38 @@ class D3Renderer {
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
+        const self = this;
 
         this._gSelection
             .selectAll('g.edge')
             .data(edges, d => d.id)
-            .join(enter => enter.append('g').classed('edge', true))
+            .join(
+                enter => enter.append('g')
+                    .classed('edge', true)
+                    .each(function(d) {
+                        const def = self.getElementDef(d.type);
+                        def.create(d, select(this), self);
+                    })
+            )
             .each(function(d) {
-                const selection = select(this);
-                d.render(selection);
+                const def = self.getElementDef(d.type);
+                def.update(d, select(this), self);
             });
 
         this._gSelection
             .selectAll('g.node')
             .data(nodes, d => d.id)
-            .join(enter => enter.append('g').classed('node', true))
+            .join(
+                enter => enter.append('g')
+                    .classed('node', true)
+                    .each(function(d) {
+                        const def = self.getElementDef(d.type);
+                        def.create(d, select(this), self);
+                    })
+            )
             .each(function(d) {
-                console.log('graph node render');
-                const selection = select(this);
-                d.render(selection);
+                const def = self.getElementDef(d.type);
+                def.update(d, select(this), self);
             });
 
     }
@@ -21028,14 +21305,25 @@ class Object$1 {
         if (index > -1) this._children.splice(index, 1);
     }
 
-    eachChild(callback) {
-        this._children.forEach((...args) => callback(...args));
-    }
-
     filterChild(callback) {
-        return this._children.filter(callback);
+        const children = [];
+        this.traverse(child => {
+            if (callback(child) === true) children.push(child);
+        });
+        return children;
     }
 
+    traverse(callback) {
+        this._children.forEach(child => {
+            callback(child);
+            if (child.traverse) child.traverse(callback);
+        });
+    }
+
+}
+
+function getId(object) {
+    return typeof object === 'string' ? object : object.id;
 }
 
 class Graph extends Object$1 {
@@ -21044,10 +21332,59 @@ class Graph extends Object$1 {
 
     constructor(...args) {
         super(...args);
+        this._edgeMap = {};
+    }
+
+    addNode(...args) {
+        super.addChild(...args);
     }
 
     getNodes() {
         return this.filterChild(d => d.type === 'node');
+    }
+
+    addEdge(edge) {
+        super.addChild(edge);
+        // 统计边信息
+        const sourceId = getId(edge.source);
+        const targetId = getId(edge.target);
+        const direction = `${sourceId}-${targetId}`;
+        const directionAlt = `${targetId}-${sourceId}`;
+        const edgeMap = this._edgeMap;
+        if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
+        if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
+        // sameIndex需要同时考虑同向和反向边
+        // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
+        if (direction === directionAlt) {
+            edge.sameIndex = ++edgeMap[direction];
+        } else {
+            edge.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
+        }
+
+        [
+            ...this.getEdgesBySourceAndTarget(edge.source, edge.target),
+            ...this.getEdgesBySourceAndTarget(edge.target, edge.source)
+        ].forEach((edge) => {
+            const sourceId = getId(edge.source);
+            const targetId = getId(edge.target);
+            const same = edgeMap[`${sourceId}-${targetId}`] || 0;
+            const sameAlt = edgeMap[`${targetId}-${sourceId}`] || 0;
+
+            edge.sameTotal = same + sameAlt;
+            edge.sameTotalHalf = edge.sameTotal / 2;
+            edge.sameUneven = edge.sameTotal % 2 !== 0;
+            edge.sameMiddleLink = edge.sameUneven === true && Math.ceil(edge.sameTotalHalf) === edge.sameIndex;
+            edge.sameLowerHalf = edge.sameIndex > edge.sameTotalHalf;
+            edge.sameIndexCorrected = edge.sameLowerHalf ? (Math.ceil(edge.sameTotalHalf) - edge.sameIndex) : edge.sameIndex;
+        });
+    }
+
+    getEdgesBySourceAndTarget(sourceId, targetId) {
+        return this.filterChild(d => 
+            d.type === 'edge' && 
+            getId(d.source) === sourceId &&
+            getId(d.target) === targetId
+        );
     }
 
     getEdges() {
@@ -21070,37 +21407,22 @@ class Node$2 {
         this.x = x;
         this.y = y;
         this.label = label;
-    }
-
-    render(selection) {
-        const size = 15;
-        const labelSize = 14;
-        const label = this.label;
-        const x = this.x;
-        const y = this.y;
-
-        selection
-            .attr('transform', `translate(${x}, ${y})`);
-
-        selection.selectAll('circle')
-            .data([size])
-            .join('circle')
-            .attr('r', d => d);
-
-        selection.selectAll('text')
-            .data([label])
-            .join('text')
-                .text(d => d)
-                .attr('x', 0)
-                .attr('y', size + labelSize)
-                .style('font-size', labelSize)
-                .attr('text-anchor', 'middle');
+        this.size = 15;
     }
 
 }
 
 class Edge$1 {
+
+    type = 'edge'
     
+    constructor({ id, source, target, label }) {
+        this.id = id;
+        this.source = source;
+        this.target = target;
+        this.label = label;
+    }
+
 }
 
 class Layout$1 extends eventemitter3 {

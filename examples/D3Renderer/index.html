@@ -66,11 +66,12 @@
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         document.body.appendChild(renderer.domElement());
 
-        const data = makeData(100, 0);
+        const data = makeData(100, 100);
+
         const graph = new Graph();
         const layout = new ForceLayout(graph);
-        data.nodes.forEach(d => graph.addChild(new Node(d)));
-        data.edges.forEach(d => graph.addChild(new Edge(d)));
+        data.nodes.forEach(d => graph.addNode(new Node(d)));
+        data.edges.forEach(d => graph.addEdge(new Edge(d)));
         layout.data({
             nodes: graph.getNodes(),
             edges: graph.getEdges()
