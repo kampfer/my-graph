@@ -51058,7 +51058,7 @@ class ReactRenderer {
     }
 
     domElement() {
-        return this.graphRef.current;
+        return this.graphRef.current.domElement();
     }
 
     render(graph) {
@@ -51134,6 +51134,15 @@ class Graph extends Object$1 {
 
     addNode(...args) {
         super.addChild(...args);
+    }
+
+    getNodeById(id) {
+        let node;
+        this.traverse((child) => {
+            if (node) return;
+            if (child.type === 'node' && child.id === id) node = child;
+        });
+        return node;
     }
 
     getNodes() {
@@ -51368,4 +51377,29 @@ class Edge$2 extends react.Component {
 
 }
 
-export { D3Renderer, DragControl, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, Edge$2 as ReactEdge, Node$3 as ReactNode, ReactRenderer, ZoomControl, index$5 as d3 };
+class DragControl$1 extends eventemitter3 {
+
+    constructor(renderer, graph) {
+        super();
+
+        const updatePositionEndRender = function(event) {
+            const id = event.sourceEvent.currentTarget.id;
+            const node = graph.getNodeById(id);
+            node.data.x = event.x;
+            node.data.y = event.y;
+            renderer.render(graph);
+        };
+
+        const d3Drag = drag()
+            .on('start', updatePositionEndRender)
+            .on('drag', updatePositionEndRender)
+            .on('end', updatePositionEndRender);
+
+        select(renderer.domElement())
+            .selectAll('g.node')
+                .call(d3Drag);
+    }
+
+}
+
+export { D3Renderer, DragControl, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, DragControl$1 as ReactDragControl, Edge$2 as ReactEdge, Node$3 as ReactNode, ReactRenderer, ZoomControl, index$5 as d3 };

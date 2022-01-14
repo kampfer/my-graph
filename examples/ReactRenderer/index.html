@@ -64,6 +64,7 @@
             ForceLayout,
             ZoomControl,
             DragControl,
+            ReactDragControl,
             ReactNode,
             ReactEdge
         } from '../../dist/graph.js';
@@ -103,9 +104,9 @@
         //     }
         // });
 
-        // layout.on('end', () => {
-        //     const dragControl = new DragControl(renderer, graph);
-        // });
+        layout.on('end', () => {
+            const dragControl = new ReactDragControl(renderer, graph);
+        });
     </script>
 </body>
 </html>

@@ -17,6 +17,15 @@ export default class Graph extends Object {
         super.addChild(...args);
     }
 
+    getNodeById(id) {
+        let node;
+        this.traverse((child) => {
+            if (node) return;
+            if (child.type === 'node' && child.id === id) node = child;
+        });
+        return node;
+    }
+
     getNodes() {
         return this.filterChild(d => d.type === 'node');
     }

@@ -75,7 +75,7 @@ export default class ReactRenderer {
     }
 
     domElement() {
-        return this.graphRef.current;
+        return this.graphRef.current.domElement();
     }
 
     render(graph) {
