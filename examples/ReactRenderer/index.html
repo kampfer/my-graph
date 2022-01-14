@@ -13,6 +13,7 @@
     </style>
 </head>
 <body>
+    <div id="container"></div>
     <script>
         function randomNode(data) {
             return data.nodes[Math.floor(Math.random() * data.nodes.length)];
@@ -54,24 +55,36 @@
         }
     </script>
     <script type="module">
-        import { D3Renderer, d3, Graph, Node, Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
+        import {
+            ReactRenderer,
+            d3,
+            Graph,
+            Node,
+            Edge,
+            ForceLayout,
+            ZoomControl,
+            DragControl,
+            ReactNode,
+            ReactEdge
+        } from '../../dist/graph.js';
 
+        const container = document.getElementById('container');
         const width = window.innerWidth;
         const height = window.innerHeight;
-        const renderer = new D3Renderer();
+        const renderer = new ReactRenderer({ container });
         renderer.setSize(width, height);
         renderer.setViewBox(-width / 2, -height / 2, width, height);
-        document.body.appendChild(renderer.domElement());
+        // document.body.appendChild(renderer.domElement());
 
-        const data = makeData(100, 100);
+        const data = makeData(100, 0);
 
         const graph = new Graph();
         const layout = new ForceLayout(graph);
-        data.nodes.forEach(d => graph.addNode(new Node(d)));
-        data.edges.forEach(d => graph.addEdge(new Edge(d)));
+        data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
+        data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
         layout.data({
-            nodes: graph.getNodes(),
-            edges: graph.getEdges()
+            nodes: graph.getNodes().map(d => d.data),
+            edges: graph.getEdges().map(d => d.data)
         });
         // while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
         //     layout.forceSimulation.tick();
@@ -81,18 +94,18 @@
         layout.on('tick', () => renderer.render(graph));
         layout.start();
 
-        const domElement = renderer.domElement();
-        const gElement = renderer.domElement().querySelector('g');
-        const control = new ZoomControl(domElement, gElement);
-        control.on('zoomstart', () => {
-            if (graph.getEdges().length + graph.getNodes().length > 2000) {
-                // graph.toggleEdge(false);     
-            }
-        });
+        // const domElement = renderer.domElement();
+        // const gElement = renderer.domElement().querySelector('g');
+        // const control = new ZoomControl(domElement, gElement);
+        // control.on('zoomstart', () => {
+        //     if (graph.getEdges().length + graph.getNodes().length > 2000) {
+        //         // graph.toggleEdge(false);     
+        //     }
+        // });
 
-        layout.on('end', () => {
-            const dragControl = new DragControl(renderer, graph);
-        });
+        // layout.on('end', () => {
+        //     const dragControl = new DragControl(renderer, graph);
+        // });
     </script>
 </body>
 </html>

@@ -28,4 +28,8 @@ export default class Object {
         });
     }
 
+    children() {
+        return this._children;
+    }
+
 }

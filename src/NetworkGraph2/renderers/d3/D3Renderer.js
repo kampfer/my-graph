@@ -78,6 +78,7 @@ export default class D3Renderer {
                     })
             )
             .each(function(d) {
+                console.log('edge update');
                 const def = self.getElementDef(d.type);
                 def.update(d, d3.select(this), self);
             });
@@ -94,6 +95,7 @@ export default class D3Renderer {
                     })
             )
             .each(function(d) {
+                console.log('node update');
                 const def = self.getElementDef(d.type);
                 def.update(d, d3.select(this), self);
             });

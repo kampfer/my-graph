@@ -23,11 +23,14 @@
   "homepage": "https://github.com/kampfer/my-graph#readme",
   "dependencies": {
     "d3": "^6.3.1",
-    "eventemitter3": "^4.0.7"
+    "eventemitter3": "^4.0.7",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^11.0.1",
+    "@rollup/plugin-replace": "^3.0.1",
     "postcss": "^8.2.4",
     "rollup": "^2.35.1",
     "rollup-plugin-postcss": "^4.0.0",

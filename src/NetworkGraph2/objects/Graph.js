@@ -22,7 +22,7 @@ export default class Graph extends Object {
     }
 
     addEdge(edge) {
-        super.addChild(edge);
+        return super.addChild(edge);
         // 统计边信息
         const sourceId = getId(edge.source);
         const targetId = getId(edge.target);

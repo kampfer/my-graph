@@ -403,6 +403,7 @@ export default class NetworkGraph extends EventEmitter {
         // 这里对每个节点单独执行更新操作
         // TODO: 先筛选出每类节点，然后批量更新每类节点，会不会更快？
         nodeSelection.each(function(d, i, nodes) {
+            console.log('node update');
             const constructor = NetworkGraph.getNodeConstructor(d.type);
             const selection = d3.select(this);
             constructor.update(selection, d, graph);
@@ -430,6 +431,7 @@ export default class NetworkGraph extends EventEmitter {
 
     _updateEdges(edgeSelection, graph) {
         edgeSelection.each(function(d) {
+            console.log('edge update');
             const constructor = NetworkGraph.getEdgeConstructor(d.type);
             const selection = d3.select(this);
             constructor.update(selection, d, graph);
