@@ -51140,7 +51140,7 @@ class Graph extends Object$1 {
         let node;
         this.traverse((child) => {
             if (node) return;
-            if (child.type === 'node' && child.id === id) node = child;
+            if (child.type === 'node' && child.data.id === id) node = child;
         });
         return node;
     }
@@ -51150,14 +51150,48 @@ class Graph extends Object$1 {
     }
 
     addEdge(edge) {
-        return super.addChild(edge);
+        super.addChild(edge);
+
+        const edgeData = edge.data;
+        // 统计边信息
+        const sourceId = getId(edgeData.source);
+        const targetId = getId(edgeData.target);
+        const direction = `${sourceId}-${targetId}`;
+        const directionAlt = `${targetId}-${sourceId}`;
+        const edgeMap = this._edgeMap;
+        if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
+        if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
+        // sameIndex需要同时考虑同向和反向边
+        // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
+        if (direction === directionAlt) {
+            edgeData.sameIndex = ++edgeMap[direction];
+        } else {
+            edgeData.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
+        }
+
+        [
+            ...this.getEdgesBySourceAndTarget(edgeData.source, edgeData.target),
+            ...this.getEdgesBySourceAndTarget(edgeData.target, edgeData.source)
+        ].forEach((edge) => {
+            const sourceId = getId(edgeData.source);
+            const targetId = getId(edgeData.target);
+            const same = edgeMap[`${sourceId}-${targetId}`] || 0;
+            const sameAlt = edgeMap[`${targetId}-${sourceId}`] || 0;
+
+            edgeData.sameTotal = same + sameAlt;
+            edgeData.sameTotalHalf = edgeData.sameTotal / 2;
+            edgeData.sameUneven = edgeData.sameTotal % 2 !== 0;
+            edgeData.sameMiddleLink = edgeData.sameUneven === true && Math.ceil(edgeData.sameTotalHalf) === edgeData.sameIndex;
+            edgeData.sameLowerHalf = edgeData.sameIndex > edgeData.sameTotalHalf;
+            edgeData.sameIndexCorrected = edgeData.sameLowerHalf ? (Math.ceil(edgeData.sameTotalHalf) - edgeData.sameIndex) : edgeData.sameIndex;
+        });
     }
 
     getEdgesBySourceAndTarget(sourceId, targetId) {
-        return this.filterChild(d => 
-            d.type === 'edge' && 
-            getId(d.source) === sourceId &&
-            getId(d.target) === targetId
+        return this.filterChild(child =>
+            child.type === 'edge' &&
+            getId(child.data.source) === sourceId &&
+            getId(child.data.target) === targetId
         );
     }
 
@@ -51185,7 +51219,7 @@ class Node$2 {
     // }
 
     constructor(data, view) {
-        this.data = data;
+        this.data = { size: 15, ...data };
         this.view = view;
     }
 
@@ -51367,13 +51401,235 @@ class Node$3 extends react.Component {
 
 }
 
+function getNodeSize$2(d) {
+    if (d.size) return d.size;
+}
+
+function project$2(p, p1, p2) {
+    const v1 = Vector2.fromSubVectors(p, p1);
+    const v2 = Vector2.fromSubVectors(p2, p1);
+    const k = v1.dot(v2) / v2.lengthSq();
+    return new Vector2().add(p1).add(v2.multiplyScalar(k));
+}
+
+function getMiddlePointOfBezierCurve$2(start, end, d) {
+    if (start.x === end.x) {
+        return new Vector2(start.x + d, (start.y + end.y) / 2);
+    }
+
+    if (start.y === end.y) {
+        return new Vector2((start.x + end.x) / 2, start.y + d);
+    }
+
+    const a = end.x - start.x;
+    const b = end.y - start.y;
+    const xc = (start.x + end.x) / 2;
+    const yc = (start.y + end.y) / 2;
+    const r = b / a;
+    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
+    const y = yc - sqrtPart;
+    return new Vector2(xc + r * yc - r * y, y);
+}
+
+function getControlPointOfBezierCurve$2(p0, p1, p2) {
+    const t = 0.5;
+    const mt = (1 - t);
+    const tt = Math.pow(t, 2);
+    const mtt = Math.pow(mt, 2);
+    const d = 2 * t * mt;
+    return new Vector2(
+        (p1.x - tt * p2.x - mtt * p0.x) / d,
+        (p1.y - tt * p2.y - mtt * p0.y) / d,
+    );
+}
+
+function getIntersectPointBetweenCircleAndLine$2(p0, p1, c, r) {
+    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
+    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
+    const a = 1 + alpha * alpha;
+    const b = -2 * (c.x - alpha * beta + alpha * c.y);
+    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
+    const s = b * b - 4 * a * _c;
+    if (s < 0) {
+        return null;
+    } else if (s === 0) {
+        const u = -b / (2 * a);
+        return new Vector2(u, alpha * u + beta);
+    } else {
+        const u1 = (-b + Math.sqrt(s)) / (2 * a);
+        const u2 = (-b - Math.sqrt(s)) / (2 * a);
+        return [
+            new Vector2(u1, alpha * u1 + beta),
+            new Vector2(u2, alpha * u2 + beta),
+        ];
+    }
+}
+
+function getIntersectPointBetweenCircleAndSegment$2(p0, p1, c, r) {
+    let points = getIntersectPointBetweenCircleAndLine$2(p0, p1, c, r);
+    if (points) {
+        const max = Math.max(p0.x, p1.x);
+        const min = Math.min(p0.x, p1.x);
+        if (Array.isArray(points)) {
+            return points.find(point => point.x >= min && point.x <= max);
+        } else {
+            return points.x >= min && points.x <= max ? points : null;
+        }
+    }
+    return points;
+}
+
+function getNewBezierPoint$2(start, c1, end, r, target) {
+
+    const curve = new QuadraticBezierCurve(start, c1, end);
+
+    function iter(p) {
+        const j1 = getIntersectPointBetweenCircleAndSegment$2(c1, p, target, r);
+        const pj1 = project$2(j1, start, end);
+        const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
+        const p2 = curve.getPoint(k);
+        const delta = p2.clone().sub(j1).length();
+
+        if (delta <= 5) {
+            return p2;
+        } else {
+            return iter(p2);
+        }
+    }
+
+    return iter(target);
+
+}
+
+function linkArc$2(d) {
+    // debugger;
+    // if (typeof d.source === 'string' || typeof d.target === 'string') return '';
+
+    let source = new Vector2(d.source.x, d.source.y);
+    let target = new Vector2(d.target.x, d.target.y);
+    if (target.x < source.x) [source, target] = [target, source];
+
+    if (d.source === d.target) {
+
+        const theta = -Math.PI / 3;
+        const r = getNodeSize$2(d.source);
+        const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
+
+        const angle = Math.PI / 12 * d.sameIndexCorrected;
+        const start = j.clone().rotateAround(source, -angle);
+        const end = j.clone().rotateAround(target, angle);
+
+        const l = 4 * r;
+        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
+        const c1 = new Vector2(
+            (start.x - source.x) / ratio + source.x,
+            (start.y - source.y) / ratio + source.y,
+        );
+        const c2 = new Vector2(
+            (end.x - target.x) / ratio + target.x,
+            (end.y - target.y) / ratio + target.y,
+        );
+
+        return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
+
+    } else {
+
+        if (d.sameTotal === 1 || d.sameMiddleLink) {
+            const p1 = getIntersectPointBetweenCircleAndSegment$2(source, target, source, getNodeSize$2(d.source));
+            const p2 = getIntersectPointBetweenCircleAndSegment$2(source, target, target, getNodeSize$2(d.target));
+            if (p1 && p2) {
+                return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+            } else {
+                return '';
+            }
+        } else {
+            const delta = 20;
+            const p1 = getMiddlePointOfBezierCurve$2(source, target, delta * d.sameIndexCorrected);
+            const c1 = getControlPointOfBezierCurve$2(source, p1, target);
+            const p2 = getNewBezierPoint$2(source, c1, target, getNodeSize$2(d.source), source);
+            const p3 = getNewBezierPoint$2(source, c1, target, getNodeSize$2(d.target), target);
+            const c2 = getControlPointOfBezierCurve$2(p2, p1, p3);
+            return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+        }
+
+    }
+
+}
 class Edge$2 extends react.Component {
 
     constructor(props) {
         super(props);
     }
 
-    render() {}
+    render() {
+        const {
+            id,
+            label,
+            source,
+            target,
+        } = this.props.data;
+        const arrowId = `arrow-${id}`;
+        const pathId = `edge-path-${id}`;
+        return react.createElement(
+            'g',
+            {
+                id,
+                className: 'edge',
+            },
+            react.createElement(
+                'defs',
+                null,
+                react.createElement(
+                    'marker',
+                    {
+                        id: arrowId,
+                        className: 'arrow',
+                        viewBox: '-10 -5 10 10',
+                        refX: 0,
+                        refY: 0,
+                        markerWidth: 6,
+                        markerHeight: 6,
+                        overflow: 'visible',
+                        orient: 'auto-start-reverse'
+                    },
+                    react.createElement(
+                        'path',
+                        {
+                            d: 'M -10,-5 L 0 ,0 L -10,5'
+                        }
+                    )
+                )
+            ),
+            react.createElement(
+                'path',
+                {
+                    stroke: '#000',
+                    className: 'edge-path',
+                    fill: 'none',
+                    id: pathId,
+                    markerStart: target.x < source.x ? `url(#${arrowId})` : 'none',
+                    markerEnd: target.x < source.x ? 'none' : `url(#${arrowId})`,
+                    d: linkArc$2(this.props.data)
+                }
+            ),
+            react.createElement(
+                'text',
+                {
+                    className: 'edge-label',
+                },
+                react.createElement(
+                    'textPath',
+                    {
+                        xlinkHref: `#${pathId}`,
+                        textAnchor: 'middle',
+                        startOffset: '50%',
+                    },
+                    label
+                )
+            )
+
+        );
+    }
 
 }
 
@@ -51383,7 +51639,7 @@ class DragControl$1 extends eventemitter3 {
         super();
 
         const updatePositionEndRender = function(event) {
-            const id = event.sourceEvent.currentTarget.id;
+            const id = this.id;
             const node = graph.getNodeById(id);
             node.data.x = event.x;
             node.data.y = event.y;

@@ -77,7 +77,7 @@
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         // document.body.appendChild(renderer.domElement());
 
-        const data = makeData(100, 0);
+        const data = makeData(1000, 500);
 
         const graph = new Graph();
         const layout = new ForceLayout(graph);
@@ -95,17 +95,17 @@
         layout.on('tick', () => renderer.render(graph));
         layout.start();
 
-        // const domElement = renderer.domElement();
-        // const gElement = renderer.domElement().querySelector('g');
-        // const control = new ZoomControl(domElement, gElement);
-        // control.on('zoomstart', () => {
-        //     if (graph.getEdges().length + graph.getNodes().length > 2000) {
-        //         // graph.toggleEdge(false);     
-        //     }
-        // });
-
         layout.on('end', () => {
             const dragControl = new ReactDragControl(renderer, graph);
+
+            const domElement = renderer.domElement();
+            const gElement = renderer.domElement().querySelector('g');
+            const control = new ZoomControl(domElement, gElement);
+            control.on('zoomstart', () => {
+                if (graph.getEdges().length + graph.getNodes().length > 2000) {
+                    // graph.toggleEdge(false);
+                }
+            });
         });
     </script>
 </body>

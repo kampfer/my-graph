@@ -16,7 +16,7 @@ export default class Node {
     // }
 
     constructor(data, view) {
-        this.data = data;
+        this.data = { size: 15, ...data };
         this.view = view;
     }
 

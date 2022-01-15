@@ -7,7 +7,7 @@ export default class DragControl extends EventEmitter {
         super();
 
         const updatePositionEndRender = function(event) {
-            const id = event.sourceEvent.currentTarget.id;
+            const id = this.id;
             const node = graph.getNodeById(id);
             node.data.x = event.x;
             node.data.y = event.y;
