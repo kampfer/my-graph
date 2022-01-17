@@ -46,7 +46,7 @@ export default class ForceLayout extends Layout {
     }
 
     stop() {
-        this.this.forceSimulation.stop();
+        this.forceSimulation.stop();
     }
 
 } 

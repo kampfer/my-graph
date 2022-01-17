@@ -51305,7 +51305,7 @@ class ForceLayout$1 extends Layout$1 {
     }
 
     stop() {
-        this.this.forceSimulation.stop();
+        this.forceSimulation.stop();
     }
 
 }

@@ -10,10 +10,29 @@
             padding: 0;
             margin: 0;
         }
+        #pane-container {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 325px;
+        }
     </style>
 </head>
 <body>
+    <div id="pane-container"></div>
     <div id="container"></div>
+    <script src="../lib/tweakpane-3.0.7.min.js"></script>
+    <script src="../lib/lodash.min.js"></script>
+    <script>
+        const settings = {
+            'node': 1000,
+            'edge': 100,
+            'display edge': true,
+            'display edge arrow': true,
+            'display edge label': true,
+            'display node label': true,
+        };
+    </script>
     <script>
         function randomNode(data) {
             return data.nodes[Math.floor(Math.random() * data.nodes.length)];
@@ -77,25 +96,25 @@
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         // document.body.appendChild(renderer.domElement());
 
-        const data = makeData(1000, 500);
+        const renderRandom = _.debounce(() => {
+            const layout = new ForceLayout();
 
-        const graph = new Graph();
-        const layout = new ForceLayout(graph);
-        data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
-        data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
-        layout.data({
-            nodes: graph.getNodes().map(d => d.data),
-            edges: graph.getEdges().map(d => d.data)
-        });
-        // while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-        //     layout.forceSimulation.tick();
-        //     console.log('layout tick');
-        // }
-        // renderer.render(graph);
-        layout.on('tick', () => renderer.render(graph));
-        layout.start();
+            const data = makeData(settings.node, settings.edge);
+            const graph = new Graph();
 
-        layout.on('end', () => {
+            data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
+            data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
+            layout.data({
+                nodes: graph.getNodes().map(d => d.data),
+                edges: graph.getEdges().map(d => d.data)
+            });
+
+            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+                layout.forceSimulation.tick();
+                // console.log('layout tick');
+            }
+            renderer.render(graph);
+
             const dragControl = new ReactDragControl(renderer, graph);
 
             const domElement = renderer.domElement();
@@ -106,7 +125,38 @@
                     // graph.toggleEdge(false);
                 }
             });
+
+            // layout.on('tick', () => renderer.render(graph));
+            // layout.on('end', () => {
+            //     const dragControl = new ReactDragControl(renderer, graph);
+
+            //     const domElement = renderer.domElement();
+            //     const gElement = renderer.domElement().querySelector('g');
+            //     const control = new ZoomControl(domElement, gElement);
+            //     control.on('zoomstart', () => {
+            //         if (graph.getEdges().length + graph.getNodes().length > 2000) {
+            //             // graph.toggleEdge(false);
+            //         }
+            //     });
+            // });
+            // layout.start();
+        }, 500);
+
+        const pane = new Tweakpane.Pane({
+            container: document.getElementById('pane-container')
         });
+
+        const folder1 = pane.addFolder({ title: '图元数量' });
+        folder1.addInput(settings, 'node', { max: 1500, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'edge', { max: 4500, min: 1, step: 1 }).on('change', renderRandom);
+
+        const folder2 = pane.addFolder({ title: '渲染' });
+        folder2.addInput(settings, 'display edge').on('change', ({ value }) => graph.toggleEdge(value));
+        folder2.addInput(settings, 'display edge arrow').on('change', ({ value }) => graph.toggleEdgeDirection(value));
+        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleEdgeLabel(value));
+        folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleNodeLabel(value));
+
+        renderRandom();
     </script>
 </body>
 </html>
