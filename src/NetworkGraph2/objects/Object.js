@@ -2,15 +2,23 @@ export default class Object {
 
     constructor() {
         this._children = [];
+        this._parent = null;
     }
 
     addChild(child) {
-        if (child) this._children.push(child);
+        if (child) {
+            this._children.push(child);
+            child._parent = this;
+        }
     }
 
     removeChild(child) {
         const index = this._children.findIndex(child);
-        if (index > -1) this._children.splice(index, 1);
+        if (index > -1) {
+            const child = this._children[index];
+            child._parent = null;
+            this._children.splice(index, 1);
+        }
     }
 
     filterChild(callback) {

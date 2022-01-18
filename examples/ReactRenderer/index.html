@@ -25,8 +25,8 @@
     <script src="../lib/lodash.min.js"></script>
     <script>
         const settings = {
-            'node': 2,
-            'edge': 3,
+            'node': 50,
+            'edge': 100,
             'display edge': true,
             'display edge arrow': true,
             'display edge label': true,
@@ -101,15 +101,14 @@
         // document.body.appendChild(renderer.domElement());
 
         let graph;
+        let layout = new ForceLayout();;
         const renderRandom = _.debounce(() => {
-            const layout = new ForceLayout();
-
             const data = makeData(settings.node, settings.edge);
             graph = new Graph();
 
             data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
             data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
-            console.log(graph.getEdges());
+            // console.log(graph.getEdges());
             layout.data({
                 nodes: graph.getNodes().map(d => d.data),
                 edges: graph.getEdges().map(d => d.data)
@@ -149,7 +148,8 @@
         }, 500);
 
         const pane = new Tweakpane.Pane({
-            container: document.getElementById('pane-container')
+            container: document.getElementById('pane-container'),
+            title: '调试'
         });
 
         const folder1 = pane.addFolder({ title: '图元数量' });
@@ -168,6 +168,15 @@
         folder2.addInput(settings, 'display node label').on('change', ({ value }) => {
             graph.getNodes().forEach(node => node.data.hideLabel = !value);
             renderer.render(graph);
+        });
+
+        pane.addButton({title: 'layout'}).on('click', () => {
+            layout.reset();
+            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+                layout.forceSimulation.tick();
+                console.log('relayout tick');
+            }
+            renderer.render(graph)
         });
 
         renderRandom();

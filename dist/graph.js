@@ -51022,7 +51022,7 @@ class ReactGraph extends react.Component {
                 graph.children().map(
                     item => !item.data.hidden && react.createElement(
                         item.view, 
-                        { key: item.data.id, data: item.data }
+                        { key: item.data.id, data: item.data, graph }
                     )
                 ),
             ),
@@ -51087,15 +51087,23 @@ class Object$1 {
 
     constructor() {
         this._children = [];
+        this._parent = null;
     }
 
     addChild(child) {
-        if (child) this._children.push(child);
+        if (child) {
+            this._children.push(child);
+            child._parent = this;
+        }
     }
 
     removeChild(child) {
         const index = this._children.findIndex(child);
-        if (index > -1) this._children.splice(index, 1);
+        if (index > -1) {
+            const child = this._children[index];
+            child._parent = null;
+            this._children.splice(index, 1);
+        }
     }
 
     filterChild(callback) {
@@ -51149,42 +51157,16 @@ class Graph extends Object$1 {
         return this.filterChild(d => d.type === 'node');
     }
 
+    addEdges(edges) {
+        edges.forEach(edge => super.addChild(edge));
+        this._updateEdges();
+    }
+
+    // 添加多条边的情况推荐使用addEdges。
+    // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
     addEdge(edge) {
         super.addChild(edge);
-
-        const edgeData = edge.data;
-        // 统计边信息
-        const sourceId = getId(edgeData.source);
-        const targetId = getId(edgeData.target);
-        const direction = `${sourceId}-${targetId}`;
-        const directionAlt = `${targetId}-${sourceId}`;
-        const edgeMap = this._edgeMap;
-        if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
-        if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
-        // sameIndex需要同时考虑同向和反向边
-        // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
-        if (direction === directionAlt) {
-            edgeData.sameIndex = ++edgeMap[direction];
-        } else {
-            edgeData.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
-        }
-
-        [
-            ...this.getEdgesBySourceAndTarget(edgeData.source, edgeData.target),
-            ...this.getEdgesBySourceAndTarget(edgeData.target, edgeData.source)
-        ].forEach((edge) => {
-            const sourceId = getId(edgeData.source);
-            const targetId = getId(edgeData.target);
-            const same = edgeMap[`${sourceId}-${targetId}`] || 0;
-            const sameAlt = edgeMap[`${targetId}-${sourceId}`] || 0;
-
-            edgeData.sameTotal = same + sameAlt;
-            edgeData.sameTotalHalf = edgeData.sameTotal / 2;
-            edgeData.sameUneven = edgeData.sameTotal % 2 !== 0;
-            edgeData.sameMiddleLink = edgeData.sameUneven === true && Math.ceil(edgeData.sameTotalHalf) === edgeData.sameIndex;
-            edgeData.sameLowerHalf = edgeData.sameIndex > edgeData.sameTotalHalf;
-            edgeData.sameIndexCorrected = edgeData.sameLowerHalf ? (Math.ceil(edgeData.sameTotalHalf) - edgeData.sameIndex) : edgeData.sameIndex;
-        });
+        this._updateEdges();
     }
 
     getEdgesBySourceAndTarget(sourceId, targetId) {
@@ -51197,6 +51179,44 @@ class Graph extends Object$1 {
 
     getEdges() {
         return this.filterChild(d => d.type === 'edge');
+    }
+
+    _updateEdges() {
+        const edges = this.getEdges();
+        const edgeMap = {};
+
+        edges.forEach(edge => {
+            const edgeData = edge.data;
+            // 统计边信息
+            const sourceId = getId(edgeData.source);
+            const targetId = getId(edgeData.target);
+            const direction = `${sourceId}-${targetId}`;
+            const directionAlt = `${targetId}-${sourceId}`;
+            if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
+            if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
+            // sameIndex需要同时考虑同向和反向边
+            // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
+            if (direction === directionAlt) {
+                edgeData.sameIndex = ++edgeMap[direction];
+            } else {
+                edgeData.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
+            }
+        });
+
+        edges.forEach((edge, i) => {
+            const edgeData = edge.data;
+            const sourceId = getId(edgeData.source);
+            const targetId = getId(edgeData.target);
+            const same = edgeMap[`${sourceId}-${targetId}`];
+            const sameAlt = edgeMap[`${targetId}-${sourceId}`];
+
+            edgeData.sameTotal = same + sameAlt;
+            edgeData.sameTotalHalf = edgeData.sameTotal / 2;
+            edgeData.sameUneven = edgeData.sameTotal % 2 !== 0;
+            edgeData.sameMiddleLink = edgeData.sameUneven === true && Math.ceil(edgeData.sameTotalHalf) === edgeData.sameIndex;
+            edgeData.sameLowerHalf = edgeData.sameIndex > edgeData.sameTotalHalf;
+            edgeData.sameIndexCorrected = edgeData.sameLowerHalf ? (Math.ceil(edgeData.sameTotalHalf) - edgeData.sameIndex) : edgeData.sameIndex;
+        });
     }
 
 }
