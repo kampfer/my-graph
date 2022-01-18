@@ -25,8 +25,8 @@
     <script src="../lib/lodash.min.js"></script>
     <script>
         const settings = {
-            'node': 1000,
-            'edge': 100,
+            'node': 2,
+            'edge': 3,
             'display edge': true,
             'display edge arrow': true,
             'display edge label': true,
@@ -53,7 +53,9 @@
                 let id = random(10);
                 data.nodes.push({
                     id,
-                    label: id
+                    label: id,
+                    // hidden: settings[''],
+                    hideLabel: !settings['display node label'],
                 });
             }
             for (let i = 0; i < edgeCount; i++) {
@@ -68,6 +70,8 @@
                     label: id,
                     source: source.id,
                     target: target.id,
+                    hidden: !settings['display edge'],
+                    hideLabel: !settings['display edge label'],
                 });
             }
             return data;
@@ -96,14 +100,16 @@
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         // document.body.appendChild(renderer.domElement());
 
+        let graph;
         const renderRandom = _.debounce(() => {
             const layout = new ForceLayout();
 
             const data = makeData(settings.node, settings.edge);
-            const graph = new Graph();
+            graph = new Graph();
 
             data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
             data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
+            console.log(graph.getEdges());
             layout.data({
                 nodes: graph.getNodes().map(d => d.data),
                 edges: graph.getEdges().map(d => d.data)
@@ -151,10 +157,18 @@
         folder1.addInput(settings, 'edge', { max: 4500, min: 1, step: 1 }).on('change', renderRandom);
 
         const folder2 = pane.addFolder({ title: '渲染' });
-        folder2.addInput(settings, 'display edge').on('change', ({ value }) => graph.toggleEdge(value));
-        folder2.addInput(settings, 'display edge arrow').on('change', ({ value }) => graph.toggleEdgeDirection(value));
-        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleEdgeLabel(value));
-        folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleNodeLabel(value));
+        folder2.addInput(settings, 'display edge').on('change', ({ value }) => {
+            graph.getEdges().forEach(edge => edge.data.hidden = !value);
+            renderer.render(graph);
+        });
+        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => {
+            graph.getEdges().forEach(edge => edge.data.hideLabel = !value);
+            renderer.render(graph);
+        });
+        folder2.addInput(settings, 'display node label').on('change', ({ value }) => {
+            graph.getNodes().forEach(node => node.data.hideLabel = !value);
+            renderer.render(graph);
+        });
 
         renderRandom();
     </script>

@@ -51020,7 +51020,7 @@ class ReactGraph extends react.Component {
                 'g', 
                 null,
                 graph.children().map(
-                    item => react.createElement(
+                    item => !item.data.hidden && react.createElement(
                         item.view, 
                         { key: item.data.id, data: item.data }
                     )
@@ -51371,7 +51371,8 @@ class Node$3 extends react.Component {
             size = 15, 
             labelSize= 14, 
             label,
-            id
+            id,
+            hideLabel
         } = this.props.data;
         return react.createElement(
             'g', 
@@ -51386,7 +51387,7 @@ class Node$3 extends react.Component {
                     r: size 
                 }
             ), 
-            react.createElement(
+            !hideLabel && react.createElement(
                 'text', 
                 { 
                     x: 0, 
@@ -51567,6 +51568,7 @@ class Edge$2 extends react.Component {
             label,
             source,
             target,
+            hideLabel,
         } = this.props.data;
         const arrowId = `arrow-${id}`;
         const pathId = `edge-path-${id}`;
@@ -51612,7 +51614,7 @@ class Edge$2 extends react.Component {
                     d: linkArc$2(this.props.data)
                 }
             ),
-            react.createElement(
+            !hideLabel && react.createElement(
                 'text',
                 {
                     className: 'edge-label',

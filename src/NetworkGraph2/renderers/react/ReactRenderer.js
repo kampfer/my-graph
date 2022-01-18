@@ -37,7 +37,7 @@ class ReactGraph extends React.Component {
                 'g', 
                 null,
                 graph.children().map(
-                    item => React.createElement(
+                    item => !item.data.hidden && React.createElement(
                         item.view, 
                         { key: item.data.id, data: item.data }
                     )

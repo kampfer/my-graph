@@ -13,7 +13,8 @@ export default class Node extends React.Component {
             size = 15, 
             labelSize= 14, 
             label,
-            id
+            id,
+            hideLabel
         } = this.props.data;
         return React.createElement(
             'g', 
@@ -28,7 +29,7 @@ export default class Node extends React.Component {
                     r: size 
                 }
             ), 
-            React.createElement(
+            !hideLabel && React.createElement(
                 'text', 
                 { 
                     x: 0, 
