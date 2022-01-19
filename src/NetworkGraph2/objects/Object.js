@@ -12,6 +12,13 @@ export default class Object {
         }
     }
 
+    prependChild(child) {
+        if (child) {
+            this._children.unshift(child);
+            child._parent = this;
+        }
+    }
+
     removeChild(child) {
         const index = this._children.findIndex(child);
         if (index > -1) {

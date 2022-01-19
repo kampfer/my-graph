@@ -51020,9 +51020,13 @@ class ReactGraph extends react.Component {
                 'g', 
                 null,
                 graph.children().map(
-                    item => !item.data.hidden && react.createElement(
-                        item.view, 
-                        { key: item.data.id, data: item.data, graph }
+                    item => react.createElement(
+                        item.view,
+                        { 
+                            key: item.data.id, 
+                            data: item.data,
+                            graph 
+                        }
                     )
                 ),
             ),
@@ -51097,6 +51101,13 @@ class Object$1 {
         }
     }
 
+    prependChild(child) {
+        if (child) {
+            this._children.unshift(child);
+            child._parent = this;
+        }
+    }
+
     removeChild(child) {
         const index = this._children.findIndex(child);
         if (index > -1) {
@@ -51140,8 +51151,8 @@ class Graph extends Object$1 {
         this._edgeMap = {};
     }
 
-    addNode(...args) {
-        super.addChild(...args);
+    addNode(node) {
+        super.addChild(node);
     }
 
     getNodeById(id) {
@@ -51158,14 +51169,14 @@ class Graph extends Object$1 {
     }
 
     addEdges(edges) {
-        edges.forEach(edge => super.addChild(edge));
+        edges.forEach(edge => super.prependChild(edge));
         this._updateEdges();
     }
 
     // 添加多条边的情况推荐使用addEdges。
     // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
     addEdge(edge) {
-        super.addChild(edge);
+        super.prependChild(edge);
         this._updateEdges();
     }
 
@@ -51392,14 +51403,18 @@ class Node$3 extends react.Component {
             labelSize= 14, 
             label,
             id,
-            hideLabel
+            hideLabel,
+            hidden
         } = this.props.data;
         return react.createElement(
             'g', 
             {
                 id,
                 className: 'node',
-                transform: `translate(${x}, ${y})`
+                transform: `translate(${x}, ${y})`,
+                style: {
+                    display: hidden ? 'none' : 'unset'
+                }
             }, 
             react.createElement(
                 'circle', 
@@ -51407,13 +51422,16 @@ class Node$3 extends react.Component {
                     r: size 
                 }
             ), 
-            !hideLabel && react.createElement(
+            react.createElement(
                 'text', 
                 { 
                     x: 0, 
                     y: size + labelSize, 
                     fontSize: labelSize, 
-                    textAnchor: 'middle' 
+                    textAnchor: 'middle',
+                    style: {
+                        display: hideLabel ? 'none' : 'unset'
+                    }
                 },
                 label
             )
@@ -51589,6 +51607,7 @@ class Edge$2 extends react.Component {
             source,
             target,
             hideLabel,
+            hidden,
         } = this.props.data;
         const arrowId = `arrow-${id}`;
         const pathId = `edge-path-${id}`;
@@ -51597,6 +51616,9 @@ class Edge$2 extends react.Component {
             {
                 id,
                 className: 'edge',
+                style: {
+                    display: hidden ? 'none' : 'unset'
+                }
             },
             react.createElement(
                 'defs',
@@ -51634,10 +51656,13 @@ class Edge$2 extends react.Component {
                     d: linkArc$2(this.props.data)
                 }
             ),
-            !hideLabel && react.createElement(
+            react.createElement(
                 'text',
                 {
                     className: 'edge-label',
+                    style: {
+                        display: hideLabel ? 'none' : 'unset'
+                    }
                 },
                 react.createElement(
                     'textPath',

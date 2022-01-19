@@ -14,14 +14,18 @@ export default class Node extends React.Component {
             labelSize= 14, 
             label,
             id,
-            hideLabel
+            hideLabel,
+            hidden
         } = this.props.data;
         return React.createElement(
             'g', 
             {
                 id,
                 className: 'node',
-                transform: `translate(${x}, ${y})`
+                transform: `translate(${x}, ${y})`,
+                style: {
+                    display: hidden ? 'none' : 'unset'
+                }
             }, 
             React.createElement(
                 'circle', 
@@ -29,13 +33,16 @@ export default class Node extends React.Component {
                     r: size 
                 }
             ), 
-            !hideLabel && React.createElement(
+            React.createElement(
                 'text', 
                 { 
                     x: 0, 
                     y: size + labelSize, 
                     fontSize: labelSize, 
-                    textAnchor: 'middle' 
+                    textAnchor: 'middle',
+                    style: {
+                        display: hideLabel ? 'none' : 'unset'
+                    }
                 },
                 label
             )

@@ -13,8 +13,8 @@ export default class Graph extends Object {
         this._edgeMap = {};
     }
 
-    addNode(...args) {
-        super.addChild(...args);
+    addNode(node) {
+        super.addChild(node);
     }
 
     getNodeById(id) {
@@ -31,14 +31,14 @@ export default class Graph extends Object {
     }
 
     addEdges(edges) {
-        edges.forEach(edge => super.addChild(edge));
+        edges.forEach(edge => super.prependChild(edge));
         this._updateEdges();
     }
 
     // 添加多条边的情况推荐使用addEdges。
     // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
     addEdge(edge) {
-        super.addChild(edge);
+        super.prependChild(edge);
         this._updateEdges();
     }
 

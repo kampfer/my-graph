@@ -153,8 +153,8 @@
         });
 
         const folder1 = pane.addFolder({ title: '图元数量' });
-        folder1.addInput(settings, 'node', { max: 1500, min: 1, step: 1 }).on('change', renderRandom);
-        folder1.addInput(settings, 'edge', { max: 4500, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', renderRandom);
 
         const folder2 = pane.addFolder({ title: '渲染' });
         folder2.addInput(settings, 'display edge').on('change', ({ value }) => {

@@ -171,6 +171,7 @@ export default class Edge extends React.Component {
             source,
             target,
             hideLabel,
+            hidden,
         } = this.props.data;
         const arrowId = `arrow-${id}`;
         const pathId = `edge-path-${id}`;
@@ -179,6 +180,9 @@ export default class Edge extends React.Component {
             {
                 id,
                 className: 'edge',
+                style: {
+                    display: hidden ? 'none' : 'unset'
+                }
             },
             React.createElement(
                 'defs',
@@ -216,10 +220,13 @@ export default class Edge extends React.Component {
                     d: linkArc(this.props.data)
                 }
             ),
-            !hideLabel && React.createElement(
+            React.createElement(
                 'text',
                 {
                     className: 'edge-label',
+                    style: {
+                        display: hideLabel ? 'none' : 'unset'
+                    }
                 },
                 React.createElement(
                     'textPath',
