@@ -10,4 +10,5 @@ export { default as DragControl } from './controls/DragControl.js';
 export { default as ReactNode } from './views/react/Node.js';
 export { default as ReactEdge } from './views/react/Edge.js';
 
-export { default as ReactDragControl } from './controls/react/DragControl.js';
+// export { default as ReactDragControl } from './controls/react/DragControl.js';
+export { default as DraggableComponent } from './views/react/draggableComponent.js';

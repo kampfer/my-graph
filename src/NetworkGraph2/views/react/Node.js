@@ -4,6 +4,8 @@ export default class Node extends React.Component {
 
     constructor(props) {
         super(props);
+
+        this.domRef = React.createRef();
     }
 
     render() {
@@ -20,6 +22,7 @@ export default class Node extends React.Component {
         return React.createElement(
             'g', 
             {
+                ref: this.domRef,
                 id,
                 className: 'node',
                 transform: `translate(${x}, ${y})`,

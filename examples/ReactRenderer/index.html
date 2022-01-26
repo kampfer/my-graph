@@ -20,7 +20,7 @@
 </head>
 <body>
     <div id="pane-container"></div>
-    <div id="container"></div>
+    <div id="container" draggable="true"></div>
     <script src="../lib/tweakpane-3.0.7.min.js"></script>
     <script src="../lib/lodash.min.js"></script>
     <script>
@@ -87,9 +87,9 @@
             ForceLayout,
             ZoomControl,
             DragControl,
-            ReactDragControl,
             ReactNode,
-            ReactEdge
+            ReactEdge,
+            DraggableComponent,
         } from '../../dist/graph.js';
 
         const container = document.getElementById('container');
@@ -101,12 +101,26 @@
         // document.body.appendChild(renderer.domElement());
 
         let graph;
-        let layout = new ForceLayout();;
+        let layout = new ForceLayout();
+        const render = function(e, dom) {
+            const id = dom.id;
+            const node = graph.getNodeById(id);
+            if (!node) return;
+            node.data.x = e.x;
+            node.data.y = e.y;
+            renderer.render(graph);
+        }
+        const DraggableReactNode = DraggableComponent(ReactNode, {
+            onDragstart: render,
+            onDrag: render,
+            onDragend: render,
+        });
+        // const DraggableReactNode = ReactNode;
         const renderRandom = _.debounce(() => {
             const data = makeData(settings.node, settings.edge);
             graph = new Graph();
 
-            data.nodes.forEach(d => graph.addNode(new Node(d, ReactNode)));
+            data.nodes.forEach(d => graph.addNode(new Node(d, DraggableReactNode)));
             data.edges.forEach(d => graph.addEdge(new Edge(d, ReactEdge)));
             // console.log(graph.getEdges());
             layout.data({
@@ -120,7 +134,7 @@
             }
             renderer.render(graph);
 
-            const dragControl = new ReactDragControl(renderer, graph);
+            // const dragControl = new DragControl(renderer, graph);
 
             const domElement = renderer.domElement();
             const gElement = renderer.domElement().querySelector('g');
