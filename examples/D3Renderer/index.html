@@ -10,9 +10,18 @@
             padding: 0;
             margin: 0;
         }
+        #pane-container {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 325px;
+        }
     </style>
 </head>
 <body>
+    <div id="pane-container"></div>
+    <script src="../lib/tweakpane-3.0.7.min.js"></script>
+    <script src="../lib/lodash.min.js"></script>
     <script>
         function randomNode(data) {
             return data.nodes[Math.floor(Math.random() * data.nodes.length)];
@@ -53,8 +62,18 @@
             return data;
         }
     </script>
+    <script>
+        const settings = {
+            'node': 50,
+            'edge': 100,
+            'display edge': true,
+            'display edge arrow': true,
+            'display edge label': true,
+            'display node label': true,
+        };
+    </script>
     <script type="module">
-        import { D3Renderer, d3, Graph, Node, Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
+        import { D3Renderer, Graph, Node, Edge, D3Node, D3Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
 
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -63,36 +82,68 @@
         renderer.setViewBox(-width / 2, -height / 2, width, height);
         document.body.appendChild(renderer.domElement());
 
-        const data = makeData(100, 100);
-
-        const graph = new Graph();
-        const layout = new ForceLayout(graph);
-        data.nodes.forEach(d => graph.addNode(new Node(d)));
-        data.edges.forEach(d => graph.addEdge(new Edge(d)));
-        layout.data({
-            nodes: graph.getNodes(),
-            edges: graph.getEdges()
-        });
-        // while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-        //     layout.forceSimulation.tick();
-        //     console.log('layout tick');
-        // }
-        // renderer.render(graph);
-        layout.on('tick', () => renderer.render(graph));
-        layout.start();
-
         const domElement = renderer.domElement();
         const gElement = renderer.domElement().querySelector('g');
         const control = new ZoomControl(domElement, gElement);
-        control.on('zoomstart', () => {
-            if (graph.getEdges().length + graph.getNodes().length > 2000) {
-                // graph.toggleEdge(false);     
+        // control.on('zoomstart', () => {
+        //     if (graph.getEdges().length + graph.getNodes().length > 2000) {
+        //         // graph.toggleEdge(false);     
+        //     }
+        // });
+
+        function renderRandom() {
+            const data = makeData(100, 100);
+
+            const graph = new Graph();
+            const layout = new ForceLayout(graph);
+            data.nodes.forEach(d => graph.addNode(new Node(d, D3Node)));
+            data.edges.forEach(d => graph.addEdge(new Edge(d, D3Edge)));
+            layout.data({
+                nodes: graph.getNodes().map(d => d.data),
+                edges: graph.getEdges().map(d => d.data)
+            });
+            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+                layout.forceSimulation.tick();
+                console.log('layout tick');
             }
+            renderer.render(graph);
+            // layout.on('tick', () => renderer.render(graph));
+            // layout.start();
+        }
+
+        const pane = new Tweakpane.Pane({
+            container: document.getElementById('pane-container'),
+            title: '调试'
         });
 
-        layout.on('end', () => {
-            const dragControl = new DragControl(renderer, graph);
+        const folder1 = pane.addFolder({ title: '图元数量' });
+        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', renderRandom);
+
+        const folder2 = pane.addFolder({ title: '渲染' });
+        folder2.addInput(settings, 'display edge').on('change', ({ value }) => {
+            graph.getEdges().forEach(edge => edge.data.hidden = !value);
+            renderer.render(graph);
         });
+        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => {
+            graph.getEdges().forEach(edge => edge.data.hideLabel = !value);
+            renderer.render(graph);
+        });
+        folder2.addInput(settings, 'display node label').on('change', ({ value }) => {
+            graph.getNodes().forEach(node => node.data.hideLabel = !value);
+            renderer.render(graph);
+        });
+
+        pane.addButton({title: 'layout'}).on('click', () => {
+            layout.reset();
+            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+                layout.forceSimulation.tick();
+                console.log('relayout tick');
+            }
+            renderer.render(graph)
+        });
+
+        renderRandom();
     </script>
 </body>
 </html>

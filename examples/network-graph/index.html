@@ -73,12 +73,12 @@
         const layout = graph.layout;
 
         // 布局（不带动画）
-        // graph.data(data);
-        // layout.data(data);
-        // while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-        //     layout.forceSimulation.tick();
-        // }
-        // graph.render();
+        graph.data(data);
+        layout.data(data);
+        while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+            layout.forceSimulation.tick();
+        }
+        graph.render();
 
         // 下载svg文件
         // download(graph.svgSelection.node().outerHTML, 'graph.svg', 'image/svg+xml');
@@ -95,10 +95,10 @@
         // image.src = url;
 
         // 布局（带动画）
-        graph.data(data);
-        layout.data(data);
-        layout.on('tick', () => graph.render());
-        layout.start();
+        // graph.data(data);
+        // layout.data(data);
+        // layout.on('tick', () => graph.render());
+        // layout.start();
     }, 500);
 
     const settings = {

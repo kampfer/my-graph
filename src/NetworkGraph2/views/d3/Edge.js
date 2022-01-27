@@ -105,22 +105,22 @@ function linkArc(d) {
     // debugger;
     // if (typeof d.source === 'string' || typeof d.target === 'string') return '';
 
-    let source = new Vector2(d.source.x, d.source.y);
-    let target = new Vector2(d.target.x, d.target.y);
+    let source = new Vector2(d.data.source.x, d.data.source.y);
+    let target = new Vector2(d.data.target.x, d.data.target.y);
     if (target.x < source.x) [source, target] = [target, source];
 
-    if (d.source === d.target) {
+    if (d.data.source === d.data.target) {
 
         const theta = -Math.PI / 3;
-        const r = getNodeSize(d.source);
+        const r = getNodeSize(d.data.source);
         const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
         
-        const angle = Math.PI / 12 * d.sameIndexCorrected;
+        const angle = Math.PI / 12 * d.data.sameIndexCorrected;
         const start = j.clone().rotateAround(source, -angle);
         const end = j.clone().rotateAround(target, angle);
         
         const l = 4 * r;
-        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
+        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.data.sameIndexCorrected * 2 * r);
         const c1 = new Vector2(
             (start.x - source.x) / ratio + source.x,
             (start.y - source.y) / ratio + source.y,
@@ -134,9 +134,9 @@ function linkArc(d) {
 
     } else {
 
-        if (d.sameTotal === 1 || d.sameMiddleLink) {
-            const p1 = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(d.source));
-            const p2 = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(d.target));
+        if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {
+            const p1 = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(d.data.source));
+            const p2 = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(d.data.target));
             if (p1 && p2) {
                 return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
             } else {
@@ -144,10 +144,10 @@ function linkArc(d) {
             }
         } else {
             const delta = 20;
-            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
+            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.data.sameIndexCorrected);
             const c1 = getControlPointOfBezierCurve(source, p1, target);
-            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(d.source), source);
-            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(d.target), target);
+            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.source), source);
+            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.target), target);
             const c2 = getControlPointOfBezierCurve(p2, p1, p3);
             return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
         }
@@ -160,26 +160,19 @@ export default {
 
     type: 'edge',
 
-    create(datum, selection, renderer) {
-        let defsSelection = renderer.rootSelection.select('defs');
-        if (defsSelection.empty()) defsSelection = renderer.rootSelection.append('defs');
-
-        const markerSelection = defsSelection.selectAll('marker.arrow');
-        if (markerSelection.empty()) {
-            markerSelection.data(['default', 'selected'])
-                .join('marker')
-                .attr('id', d => `arrow-${d}`)
-                .attr('class', d => `arrow ${d}`)
-                .attr('viewbox', '-10 -5 10 10')
-                .attr('refX', 0)
-                .attr('refY', 0)
-                .attr('markerWidth', 6)
-                .attr('markerHeight', 6)
-                .attr('overflow', 'visible')
-                .attr('orient', 'auto-start-reverse')
-                .append('svg:path')
-                .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
-        }
+    create(datum, selection) {
+        selection.append('marker')
+            .attr('id', `arrow-${datum.id}`)
+            .attr('class', `arrow ${datum.id}`)
+            .attr('viewbox', '-10 -5 10 10')
+            .attr('refX', 0)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('overflow', 'visible')
+            .attr('orient', 'auto-start-reverse')
+            .append('svg:path')
+            .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
 
         selection.append('path')
             .attr('stroke', '#000')
@@ -196,17 +189,17 @@ export default {
                 .attr('startOffset', '50%');
     },
 
-    update(datum, selection, renderer) {
+    update(datum, selection) {
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '')
 
         const pathSelection = selection.select('path.edge');
         if (datum.target.x < datum.source.x) {  // 反
-            pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+            pathSelection.attr('marker-start', `url(#arrow-${datum.id}`);
             pathSelection.attr('marker-end', 'none');
         } else {    // 正
             pathSelection.attr('marker-start', 'none');
-            pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
+            pathSelection.attr('marker-end', `url(#arrow-${datum.id}`);
         }
 
         pathSelection.attr('d', linkArc);

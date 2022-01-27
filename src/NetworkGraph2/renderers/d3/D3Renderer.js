@@ -1,15 +1,9 @@
 import * as d3 from 'd3';
-import node from './node';
-import edge from './edge';
 
 export default class D3Renderer {
 
     constructor({
-        svg,
-        elementDefines = [
-            node,
-            edge
-        ]
+        svg
     } = {}) {
         if (svg && svg instanceof SVGElement) {
             this.rootSelection = d3.select(svg);
@@ -24,8 +18,6 @@ export default class D3Renderer {
 
         this.rootSelection.append('defs');
         this._gSelection = this.rootSelection.append('g');
-
-        elementDefines.forEach(def => this.registerElement(def.type, def));
     }
 
     setViewBox(x, y, width, height) {
@@ -42,22 +34,6 @@ export default class D3Renderer {
         return this.rootSelection.node();
     }
 
-    registerElement(name, def) {
-        if (!this._elemDefs) this._elemDefs = {};
-        if (this._elemDefs[name]) return;
-        this._elemDefs[name] = def;
-    }
-
-    unregisterElement(name) {
-        if (this._elemDefs) delete this._elemDefs[name];
-    }
-
-    getElementDef(name) {
-        const def = this._elemDefs ? this._elemDefs[name] : null;
-        if (def) return def;
-        return null;
-    }
-
     render(graph) {
 
         console.log('graph render');
@@ -72,15 +48,12 @@ export default class D3Renderer {
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
-                    .each(function(d) {
-                        const def = self.getElementDef(d.type);
-                        def.create(d, d3.select(this), self);
+                    .each(function(edge) {
+                        edge.view.create(edge.data, d3.select(this));
                     })
             )
-            .each(function(d) {
-                console.log('edge update');
-                const def = self.getElementDef(d.type);
-                def.update(d, d3.select(this), self);
+            .each(function(edge) {
+                edge.view.update(edge.data, d3.select(this));
             });
 
         this._gSelection
@@ -89,15 +62,12 @@ export default class D3Renderer {
             .join(
                 enter => enter.append('g')
                     .classed('node', true)
-                    .each(function(d) {
-                        const def = self.getElementDef(d.type);
-                        def.create(d, d3.select(this), self);
+                    .each(function(node) {
+                        node.view.create(node.data, d3.select(this));
                     })
             )
-            .each(function(d) {
-                console.log('node update');
-                const def = self.getElementDef(d.type);
-                def.update(d, d3.select(this), self);
+            .each(function(node) {
+                node.view.update(node.data, d3.select(this));
             });
 
     }
