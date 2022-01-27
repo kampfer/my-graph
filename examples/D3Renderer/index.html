@@ -92,7 +92,7 @@
         // });
 
         function renderRandom() {
-            const data = makeData(100, 100);
+            const data = makeData(settings.node, settings.edge);
 
             const graph = new Graph();
             const layout = new ForceLayout(graph);
