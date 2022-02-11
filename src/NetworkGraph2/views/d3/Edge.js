@@ -190,6 +190,10 @@ export default {
     },
 
     update(datum, selection) {
+        selection.attr('display', datum.hidden === true ? 'none' : 'unset');
+
+        selection.select('text').attr('display', datum.hideLabel === true ? 'none' : 'unset');
+
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '')
 

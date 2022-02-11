@@ -42,7 +42,9 @@
                 let id = random(10);
                 data.nodes.push({
                     id,
-                    label: id
+                    label: id,
+                    hidden: !settings['display node'],
+                    hideLabel: !settings['display node label']
                 });
             }
             for (let i = 0; i < edgeCount; i++) {
@@ -57,6 +59,8 @@
                     label: id,
                     source: source.id,
                     target: target.id,
+                    hidden: !settings['display edge'],
+                    hideLabel: !settings['display edge label']
                 });
             }
             return data;
@@ -67,6 +71,7 @@
             'node': 50,
             'edge': 100,
             'display edge': true,
+            'display node': true,
             'display edge arrow': true,
             'display edge label': true,
             'display node label': true,
@@ -91,10 +96,11 @@
         //     }
         // });
 
+        let graph;
         function renderRandom() {
             const data = makeData(settings.node, settings.edge);
 
-            const graph = new Graph();
+            graph = new Graph();
             const layout = new ForceLayout(graph);
             data.nodes.forEach(d => graph.addNode(new Node(d, D3Node)));
             data.edges.forEach(d => graph.addEdge(new Edge(d, D3Edge)));
@@ -109,6 +115,8 @@
             renderer.render(graph);
             // layout.on('tick', () => renderer.render(graph));
             // layout.start();
+
+            const dragControl = new DragControl(renderer, graph);
         }
 
         const pane = new Tweakpane.Pane({

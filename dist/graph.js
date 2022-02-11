@@ -20995,29 +20995,33 @@ class D3Renderer {
 
         this._gSelection
             .selectAll('g.edge')
-            .data(edges, d => d.id)
+            .data(edges, d => d.data.id)
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
                     .each(function(edge) {
+                        console.log('create edge');
                         edge.view.create(edge.data, select(this));
                     })
             )
             .each(function(edge) {
+                console.log('update edge');
                 edge.view.update(edge.data, select(this));
             });
 
         this._gSelection
             .selectAll('g.node')
-            .data(nodes, d => d.id)
+            .data(nodes, d => d.data.id)
             .join(
                 enter => enter.append('g')
                     .classed('node', true)
                     .each(function(node) {
+                        console.log('create node');
                         node.view.create(node.data, select(this));
                     })
             )
             .each(function(node) {
+                console.log('update node');
                 node.view.update(node.data, select(this));
             });
 
@@ -51102,9 +51106,9 @@ class DragControl extends eventemitter3 {
     constructor(renderer, graph) {
         super();
 
-        const updatePositionEndRender= function(event, d) {
-            d.x = event.x;
-            d.y = event.y;
+        const updatePositionEndRender = function(event, d) {
+            d.data.x = event.x;
+            d.data.y = event.y;
             renderer.render(graph);
         };
 
@@ -51428,6 +51432,7 @@ var Node$4 = {
         const label = datum.label;
 
         selection
+            .attr('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
@@ -51435,6 +51440,7 @@ var Node$4 = {
 
         selection.select('text')
             .text(label)
+            .style('display', datum.hideLabel === true ? 'none' : 'unset')
             .attr('x', 0)
             .attr('y', size + labelSize)
             .style('font-size', labelSize)
@@ -51630,6 +51636,10 @@ var Edge$3 = {
     },
 
     update(datum, selection) {
+        selection.attr('display', datum.hidden === true ? 'none' : 'unset');
+
+        selection.select('text').attr('display', datum.hideLabel === true ? 'none' : 'unset');
+
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '');
 

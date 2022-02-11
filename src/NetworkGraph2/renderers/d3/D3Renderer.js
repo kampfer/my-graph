@@ -44,29 +44,33 @@ export default class D3Renderer {
 
         this._gSelection
             .selectAll('g.edge')
-            .data(edges, d => d.id)
+            .data(edges, d => d.data.id)
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
                     .each(function(edge) {
+                        console.log('create edge');
                         edge.view.create(edge.data, d3.select(this));
                     })
             )
             .each(function(edge) {
+                console.log('update edge');
                 edge.view.update(edge.data, d3.select(this));
             });
 
         this._gSelection
             .selectAll('g.node')
-            .data(nodes, d => d.id)
+            .data(nodes, d => d.data.id)
             .join(
                 enter => enter.append('g')
                     .classed('node', true)
                     .each(function(node) {
+                        console.log('create node');
                         node.view.create(node.data, d3.select(this));
                     })
             )
             .each(function(node) {
+                console.log('update node');
                 node.view.update(node.data, d3.select(this));
             });
 

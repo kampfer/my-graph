@@ -12,6 +12,7 @@ export default {
         const label = datum.label;
 
         selection
+            .attr('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
@@ -19,6 +20,7 @@ export default {
 
         selection.select('text')
             .text(label)
+            .style('display', datum.hideLabel === true ? 'none' : 'unset')
             .attr('x', 0)
             .attr('y', size + labelSize)
             .style('font-size', labelSize)
