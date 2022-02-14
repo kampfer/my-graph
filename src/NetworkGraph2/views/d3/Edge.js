@@ -1,5 +1,8 @@
 import Vector2 from '../../../math/Vector2';
 import QuadraticBezierCurve from '../../../math/QuadraticBezierCurve';
+import Line from '../../../math/Line';
+import Circle from '../../../math/Circle';
+import intersectSegmentAndCircle from '../../../math/utils/intersectSegmentAndCircle';
 
 function getNodeSize(d) {
     if (d.size) return d.size;
@@ -43,48 +46,14 @@ function getControlPointOfBezierCurve(p0, p1, p2) {
     );
 }
 
-function getIntersectPointBetweenCircleAndLine(p0, p1, c, r) {
-    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
-    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
-    const a = 1 + alpha * alpha;
-    const b = -2 * (c.x - alpha * beta + alpha * c.y);
-    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
-    const s = b * b - 4 * a * _c;
-    if (s < 0) {
-        return null;
-    } else if (s === 0) {
-        const u = -b / (2 * a);
-        return new Vector2(u, alpha * u + beta);
-    } else {
-        const u1 = (-b + Math.sqrt(s)) / (2 * a);
-        const u2 = (-b - Math.sqrt(s)) / (2 * a);
-        return [
-            new Vector2(u1, alpha * u1 + beta),
-            new Vector2(u2, alpha * u2 + beta),
-        ];
-    }
-}
-
-function getIntersectPointBetweenCircleAndSegment(p0, p1, c, r) {
-    let points = getIntersectPointBetweenCircleAndLine(p0, p1, c, r);
-    if (points) {
-        const max = Math.max(p0.x, p1.x);
-        const min = Math.min(p0.x, p1.x);
-        if (Array.isArray(points)) {
-            return points.find(point => point.x >= min && point.x <= max);
-        } else {
-            return points.x >= min && points.x <= max ? points : null;
-        }
-    }
-    return points;
-}
-
 function getNewBezierPoint(start, c1, end, r, target) {
 
     const curve = new QuadraticBezierCurve(start, c1, end);
 
     function iter(p) {
-        const j1 = getIntersectPointBetweenCircleAndSegment(c1, p, target, r);
+        const line = new Line(c1, p);
+        const circle = new Circle(target, r);
+        const j1 = intersectSegmentAndCircle(line, circle);
         const pj1 = project(j1, start, end);
         const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
         const p2 = curve.getPoint(k);
@@ -102,9 +71,6 @@ function getNewBezierPoint(start, c1, end, r, target) {
 }
 
 function linkArc(d) {
-    // debugger;
-    // if (typeof d.source === 'string' || typeof d.target === 'string') return '';
-
     let source = new Vector2(d.data.source.x, d.data.source.y);
     let target = new Vector2(d.data.target.x, d.data.target.y);
     if (target.x < source.x) [source, target] = [target, source];
@@ -135,8 +101,11 @@ function linkArc(d) {
     } else {
 
         if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {
-            const p1 = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(d.data.source));
-            const p2 = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(d.data.target));
+            const line = new Line(source, target);
+            const sourceCircle = new Circle(source, getNodeSize(d.data.source));
+            const targetCircle = new Circle(target, getNodeSize(d.data.target)); 
+            const p1 = intersectSegmentAndCircle(line, sourceCircle);
+            const p2 = intersectSegmentAndCircle(line, targetCircle);
             if (p1 && p2) {
                 return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
             } else {
