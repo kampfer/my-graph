@@ -26,6 +26,25 @@ export default class QuadraticBezierCurve {
         return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
     }
 
+    getLUT(size) {
+        const lut = [];
+
+        if (size < 2) return lut;
+
+        let cur = 0;
+        while(cur < size) {
+            const t = cur / (size - 1);
+            lut.push({
+                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                t
+            });
+            cur++;
+        }
+
+        return lut;
+    }
+
     static interpolate(t, p0, p1, p2) {
         const t1 = 1 - t;
         return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
