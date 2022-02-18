@@ -7,11 +7,14 @@ export default {
     update(datum, selection) {
         const x = datum.x;
         const y = datum.y;
-        const size = 15;
-        const labelSize = 14;
+        const size = datum.size === undefined ? 15 : datum.size;
+        const labelSize = datum.labelSize === undefined ? 14 : datum.labelSize;
         const label = datum.label;
 
+        // TODO 所有类型的节点有需要以下操作，需要提取到公用位置
         selection
+            .classed('selected', datum.selected)
+            .classed('hidden', datum.hidden)
             .attr('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 

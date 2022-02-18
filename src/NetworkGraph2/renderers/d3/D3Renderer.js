@@ -53,7 +53,7 @@ export default class D3Renderer extends EventEmitter {
 
     render(graph) {
 
-        console.log('graph render');
+        // console.log('graph render');
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
@@ -64,12 +64,8 @@ export default class D3Renderer extends EventEmitter {
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
-                    // .on('click', transportEvent('click.node', this))
-                    // .on('mouseenter', transportEvent('mouseenter.node', this))
-                    // .on('mouseleave', transportEvent('mouseleave.node', this))
-                    // .on('contextmenu', transportEvent('contextmenu.node', this))
                     .each(function(edge) {
-                        console.log('create edge');
+                        // console.log('create edge');
                         edge.view.create(edge.data, d3.select(this));
                     })
                     .call((enter) => {
@@ -77,7 +73,7 @@ export default class D3Renderer extends EventEmitter {
                     })
             )
             .each(function(edge) {
-                console.log('update edge');
+                // console.log('update edge');
                 edge.view.update(edge.data, d3.select(this));
             });
 
@@ -88,7 +84,7 @@ export default class D3Renderer extends EventEmitter {
                 enter => enter.append('g')
                     .classed('node', true)
                     .each(function(node) {
-                        console.log('create node');
+                        // console.log('create node');
                         node.view.create(node.data, d3.select(this));
                     })
                     .call((enter) => {
@@ -96,7 +92,7 @@ export default class D3Renderer extends EventEmitter {
                     })
             )
             .each(function(node) {
-                console.log('update node');
+                // console.log('update node');
                 node.view.update(node.data, d3.select(this));
             });
 

@@ -8,6 +8,7 @@ import D3Edge from './views/d3/Edge';
 import D3Node from './views/d3/Node';
 import DragControl from './controls/DragControl';
 import ZoomControl from './controls/ZoomControl';
+import ClickSelectControl from './controls/ClickSelectControl';
 
 export default class NetworkGraph extends EventEmitter {
     
@@ -34,6 +35,8 @@ export default class NetworkGraph extends EventEmitter {
         this.layout = new ForceLayout();
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
+        this.clickSelectControl = new ClickSelectControl(this);
+        this.model = null;
 
         if (data) {
             this.data(data);
@@ -55,6 +58,7 @@ export default class NetworkGraph extends EventEmitter {
     render() {
         const layout = this.layout;
 
+        layout.reset();
         if (true) {
             while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
                 layout.forceSimulation.tick();
@@ -64,6 +68,30 @@ export default class NetworkGraph extends EventEmitter {
             layout.on('tick', () => this.renderer.render(this.model));
             layout.start();
         }
+    }
+
+    toggleAllNodes(flag) {
+        this.model.getNodes().forEach(node => node.data.hidden = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllNodeLabels(flag) {
+        this.model.getNodes().forEach(node => node.data.hideLabel = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllEdges(flag) {
+        this.model.getEdges().forEach(edge => edge.data.hidden = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllEdgeLabels(flag) {
+        this.model.getEdges().forEach(edge => edge.data.hideLabel = !flag);
+        this.renderer.render(this.model);
+    }
+
+    destroy() {
+        this.renderer.rootSelection.remove();
     }
 
 }

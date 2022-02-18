@@ -19952,7 +19952,7 @@ class D3Renderer extends eventemitter3 {
 
     render(graph) {
 
-        console.log('graph render');
+        // console.log('graph render');
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
@@ -19963,12 +19963,8 @@ class D3Renderer extends eventemitter3 {
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
-                    // .on('click', transportEvent('click.node', this))
-                    // .on('mouseenter', transportEvent('mouseenter.node', this))
-                    // .on('mouseleave', transportEvent('mouseleave.node', this))
-                    // .on('contextmenu', transportEvent('contextmenu.node', this))
                     .each(function(edge) {
-                        console.log('create edge');
+                        // console.log('create edge');
                         edge.view.create(edge.data, select(this));
                     })
                     .call((enter) => {
@@ -19976,7 +19972,7 @@ class D3Renderer extends eventemitter3 {
                     })
             )
             .each(function(edge) {
-                console.log('update edge');
+                // console.log('update edge');
                 edge.view.update(edge.data, select(this));
             });
 
@@ -19987,7 +19983,7 @@ class D3Renderer extends eventemitter3 {
                 enter => enter.append('g')
                     .classed('node', true)
                     .each(function(node) {
-                        console.log('create node');
+                        // console.log('create node');
                         node.view.create(node.data, select(this));
                     })
                     .call((enter) => {
@@ -19995,7 +19991,7 @@ class D3Renderer extends eventemitter3 {
                     })
             )
             .each(function(node) {
-                console.log('update node');
+                // console.log('update node');
                 node.view.update(node.data, select(this));
             });
 
@@ -49857,7 +49853,7 @@ class Graph extends Object$1 {
 
     constructor(...args) {
         super(...args);
-        this._edgeMap = {};
+        // this._edgeMap = {};
     }
 
     addNode(node) {
@@ -50106,11 +50102,14 @@ var D3Node = {
     update(datum, selection) {
         const x = datum.x;
         const y = datum.y;
-        const size = 15;
-        const labelSize = 14;
+        const size = datum.size === undefined ? 15 : datum.size;
+        const labelSize = datum.labelSize === undefined ? 14 : datum.labelSize;
         const label = datum.label;
 
+        // TODO 所有类型的节点有需要以下操作，需要提取到公用位置
         selection
+            .classed('selected', datum.selected)
+            .classed('hidden', datum.hidden)
             .attr('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 
@@ -50542,6 +50541,25 @@ var D3Edge = {
 
 };
 
+class ClickSelectControl extends eventemitter3 {
+
+    constructor(graph) {
+        super();
+
+        const self = this;
+        const handleClick = function (e, node) {
+            node.data.selected = true;
+            graph.renderer.render(graph.model);
+            self.emit('select.node', node);
+        };
+
+        graph.renderer.on('created.node', enter => {
+            enter.on('click', handleClick);
+        });
+    }
+
+}
+
 class NetworkGraph extends eventemitter3 {
     
     constructor({
@@ -50567,6 +50585,8 @@ class NetworkGraph extends eventemitter3 {
         this.layout = new ForceLayout();
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
+        this.clickSelectControl = new ClickSelectControl(this);
+        this.model = null;
 
         if (data) {
             this.data(data);
@@ -50588,12 +50608,37 @@ class NetworkGraph extends eventemitter3 {
     render() {
         const layout = this.layout;
 
+        layout.reset();
         {
             while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
                 layout.forceSimulation.tick();
             }
             this.renderer.render(this.model);
         }
+    }
+
+    toggleAllNodes(flag) {
+        this.model.getNodes().forEach(node => node.data.hidden = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllNodeLabels(flag) {
+        this.model.getNodes().forEach(node => node.data.hideLabel = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllEdges(flag) {
+        this.model.getEdges().forEach(edge => edge.data.hidden = !flag);
+        this.renderer.render(this.model);
+    }
+
+    toggleAllEdgeLabels(flag) {
+        this.model.getEdges().forEach(edge => edge.data.hideLabel = !flag);
+        this.renderer.render(this.model);
+    }
+
+    destroy() {
+        this.renderer.rootSelection.remove();
     }
 
 }

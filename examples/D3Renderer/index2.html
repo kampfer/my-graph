@@ -14,13 +14,13 @@
             position: fixed;
             left: 20px;
             top: 20px;
-            width: 325px;
+            width: 300px;
         }
         #pane-container2 {
             position: fixed;
             right: 20px;
             top: 20px;
-            width: 325px;
+            width: 300px;
         }
     </style>
 </head>
@@ -86,22 +86,36 @@
         };
 
         const curNode = {
-            label: ''
+            ref: null,
+            position: { x: 0, y: 0 },
+            label: '',
+            labelSize: 12,
+            labelColor: 'black'
         };
+
         const curEdge = {
-            label: ''
+            label: '',
         };
     </script>
     <script type="module">
         import { NetworkGraph } from '../../dist/graph.js';
 
+        let graph;
         function renderRandom() {
+            if (graph) graph.destroy();
             const data = makeData(settings.node, settings.edge);
-            new NetworkGraph({
+            graph = new NetworkGraph({
                 container: '#graph',
                 width: window.innerWidth,
                 height: window.innerHeight,
                 data
+            });
+            graph.clickSelectControl.on('select.node', node => {
+                curNode.ref = node;
+                curNode.label = node.data.label;
+                curNode.position.x = node.data.x;
+                curNode.position.y = node.data.y;
+                pane2.refresh();
             });
         }
 
@@ -111,35 +125,28 @@
         });
 
         const folder1 = pane.addFolder({ title: '图元数量' });
-        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', renderRandom);
-        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', _.debounce(renderRandom, 500));
+        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', _.debounce(renderRandom, 500));
 
         const folder2 = pane.addFolder({ title: '渲染' });
-        folder2.addInput(settings, 'display edge').on('change', ({ value }) => {
-            graph.getEdges().forEach(edge => edge.data.hidden = !value);
-            renderer.render(graph);
-        });
-        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => {
-            graph.getEdges().forEach(edge => edge.data.hideLabel = !value);
-            renderer.render(graph);
-        });
-        folder2.addInput(settings, 'display node label').on('change', ({ value }) => {
-            graph.getNodes().forEach(node => node.data.hideLabel = !value);
-            renderer.render(graph);
-        });
+        folder2.addInput(settings, 'display edge').on('change', ({ value }) => graph.toggleAllEdges(value));
+        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
+        folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleAllNodeLabels(value));
 
-        pane.addButton({title: 'layout'}).on('click', () => {
-            layout.reset();
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-                console.log('relayout tick');
-            }
-            renderer.render(graph)
-        });
+        pane.addButton({title: 'layout'}).on('click', () => graph.render(graph.model));
 
         const pane2 = new Tweakpane.Pane({
             container: document.getElementById('pane-container2'),
             title: '属性'
+        });
+        pane2.addInput(curNode, 'label').on('change', ({ value }) => {
+            curNode.ref.data.label = value;
+            graph.renderer.render(graph.model);
+        });
+        pane2.addInput(curNode, 'position').on('change', ({ value }) => {
+            curNode.ref.data.x = value.x;
+            curNode.ref.data.y = value.y;
+            graph.renderer.render(graph.model);
         });
 
         renderRandom();

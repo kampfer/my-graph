@@ -10,7 +10,7 @@ export default class Graph extends Object {
 
     constructor(...args) {
         super(...args);
-        this._edgeMap = {};
+        // this._edgeMap = {};
     }
 
     addNode(node) {
