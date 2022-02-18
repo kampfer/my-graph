@@ -1,10 +1,25 @@
 import * as d3 from 'd3';
+import EventEmitter from 'eventemitter3';
 
-export default class D3Renderer {
+const transportEvent = (function () {
+    const fnMaps = {};
+    return function (eventName, context) {
+        if (!fnMaps[eventName]) {
+            fnMaps[eventName] = function (...args) {
+                context.emit(eventName, ...args);
+            };
+        }
+        return fnMaps[eventName];
+    };
+})();
+
+export default class D3Renderer extends EventEmitter {
 
     constructor({
         svg
     } = {}) {
+        super();
+
         if (svg && svg instanceof SVGElement) {
             this.rootSelection = d3.select(svg);
         } else {
@@ -17,7 +32,9 @@ export default class D3Renderer {
             .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
         this.rootSelection.append('defs');
-        this._gSelection = this.rootSelection.append('g');
+        this._gSelection = this.rootSelection
+            .append('g')
+            .classed('canvas', true);
     }
 
     setViewBox(x, y, width, height) {
@@ -30,7 +47,7 @@ export default class D3Renderer {
             .attr('height', height);
     }
 
-    domElement() {
+    rootElement() {
         return this.rootSelection.node();
     }
 
@@ -40,7 +57,6 @@ export default class D3Renderer {
 
         const nodes = graph.getNodes();
         const edges = graph.getEdges();
-        const self = this;
 
         this._gSelection
             .selectAll('g.edge')
@@ -48,9 +64,16 @@ export default class D3Renderer {
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
+                    // .on('click', transportEvent('click.node', this))
+                    // .on('mouseenter', transportEvent('mouseenter.node', this))
+                    // .on('mouseleave', transportEvent('mouseleave.node', this))
+                    // .on('contextmenu', transportEvent('contextmenu.node', this))
                     .each(function(edge) {
                         console.log('create edge');
                         edge.view.create(edge.data, d3.select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('created.edge', enter);
                     })
             )
             .each(function(edge) {
@@ -67,6 +90,9 @@ export default class D3Renderer {
                     .each(function(node) {
                         console.log('create node');
                         node.view.create(node.data, d3.select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('created.node', enter);
                     })
             )
             .each(function(node) {

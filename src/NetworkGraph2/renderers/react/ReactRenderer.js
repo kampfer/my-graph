@@ -16,7 +16,7 @@ class ReactGraph extends React.Component {
         // };
     }
 
-    domElement() {
+    rootElement() {
         return this.svgRef.current;
     }
 
@@ -78,8 +78,8 @@ export default class ReactRenderer {
         // this.graphRef.current.setState({ width, height });
     }
 
-    domElement() {
-        return this.graphRef.current.domElement();
+    rootElement() {
+        return this.graphRef.current.rootElement();
     }
 
     render(graph) {

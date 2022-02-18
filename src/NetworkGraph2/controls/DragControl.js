@@ -3,13 +3,13 @@ import * as d3 from 'd3';
 
 export default class DragControl extends EventEmitter {
 
-    constructor(renderer, graph) {
+    constructor(graph) {
         super();
 
         const updatePositionEndRender = function(event, d) {
             d.data.x = event.x;
             d.data.y = event.y;
-            renderer.render(graph);
+            graph.renderer.render(graph.model);
         };
 
         const d3Drag = d3.drag()
@@ -17,9 +17,7 @@ export default class DragControl extends EventEmitter {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        d3.select(renderer.domElement())
-            .selectAll('g.node')
-                .call(d3Drag);
+        graph.renderer.on('created.node', (enter) => enter.call(d3Drag));
     }
 
 }

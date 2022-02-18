@@ -3,24 +3,25 @@ import * as d3 from 'd3';
 
 export default class ZoomControl extends EventEmitter {
 
-    constructor(rootElem, wrapperElem) {
+    constructor(graph) {
         super();
 
-        const selection = d3.select(wrapperElem);
-        const { width, height } = rootElem.getBoundingClientRect();
+        const rootSelection = graph.renderer.rootSelection;
+        const wrapperSelection = rootSelection.select('g.canvas');
+        const { width, height } = rootSelection.node().getBoundingClientRect();
         const d3Zoom = d3.zoom()
             .filter(event => !event.ctrlKey)
             .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
             // .scaleExtent([1, 8])
             .on('zoom', event => {
                 const { transform } = event;
-                selection.attr('transform', transform);
+                wrapperSelection.attr('transform', transform);
                 this.emit('zoom', event);
             })
             .on('start', event => this.emit('zoomstart', event))
             .on('end', event => this.emit('zoomend', event));
 
-        d3.select(rootElem).call(d3Zoom);
+        rootSelection.call(d3Zoom);
         this.d3Zoom = d3Zoom;
     }
 

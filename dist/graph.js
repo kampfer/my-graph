@@ -19912,1051 +19912,13 @@ EventEmitter.EventEmitter = EventEmitter;
 }
 });
 
-class Behavior {
-
-    constructor(graph) {
-        this.graph = graph;
-    }
-
-    // 遍历events属性绑定事件：使用key作为事件名，value作为事件处理函数
-    use() {
-        if (this.events) {
-            Object.entries(this.events).forEach(([eventName, callback]) => {
-                this.graph.on(eventName, callback);
-            });
-        }
-    }
-
-    unuse() {
-        if (this.events) {
-            Object.entries(this.events).forEach(([eventName, callback]) => {
-                this.graph.off(eventName, callback);
-            });
-        }
-    }
-
-    destroy() {
-        this.unuse();
-        this.events = null;
-    }
-
-    // _fixEventHandles(events = this.events) {
-    //     Object.entries(events).forEach(([eventName, callback]) => {
-    //         events[eventName] = callback.bind(this);
-    //     });
-    // }
-
-}
-
-class DragDropBehavior extends Behavior {
-
-    constructor(...args) {
-        super(...args);
-        this.events = {
-            'dragstart.node': this.handleDragstart.bind(this),
-            'drag.node': this.handleDrag.bind(this),
-            'dragend.node': this.handleDragend.bind(this)
-        };
-    }
-
-    handleDragstart(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
-    }
-
-    handleDrag(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
-    }
-
-    handleDragend(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        this.graph.render();
-    }
-
-}
-
-class ClickSelectBehavior extends Behavior {
-
-    constructor(...args) {
-        super(...args);
-        this.events = {
-            'click.node': this.handleClick.bind(this),
-            'click.edge': this.handleCliatAtEdge.bind(this)
-        };
-    }
-
-    handleClick(e, d) {
-        const ids = [d.id];
-        this.graph.selectNodes(ids);
-        this.graph.emit('selectChange.node', ids, d);
-    }
-
-    handleCliatAtEdge(e, d) {
-        const ids = [d.id];
-        this.graph.selectEdges(ids);
-        this.graph.emit('selectChange.edge', ids, d);
-    }
-
-}
-
-class ZoomBehavior extends Behavior {
-
-    constructor(...args) {
-        super(...args);
-        this.events = {
-            'zoom': this.handleZoom.bind(this),
-            'zoomstart': this.handleZoomstart.bind(this),
-            'zoomend': this.handleZoomend.bind(this),
-        };
-    }
-
-    handleZoom({ transform }) {
-        this.graph.gSelection.attr('transform', transform);
-    }
-
-    handleZoomstart() {
-        clearTimeout(this.zoomendTimer);
-        if (this.graph._data.edges.length + this.graph._data.nodes.length > 2000) {
-            this.graph.toggleEdge(false);
-        }
-    }
-
-    handleZoomend() {
-        this.zoomendTimer = setTimeout(() => this.graph.toggleEdge(true), 100);
-    }
-
-}
-
-class Layout extends eventemitter3 {
-
-    constructor(graph) {
-        super();
-        this.graph = graph;
-    }
-
-    data() {}
-
-    start() {}
-    
-    resume() {}
-
-    stop() {}
-
-}
-
-class ForceLayout extends Layout {
-
-    constructor(...args) {
-        super(...args);
-        
-        this.linkForce = link().id(d => d.id).distance(200);
-
-        this.forceSimulation = simulation();
-
-        // 不要自动启动布局
-        this.forceSimulation.stop()
-            // 配置排斥力，引力，连接力
-            .force('edge', this.linkForce)
-            .force('change', manyBody().strength(-500))
-            .force('x', x$2().strength(0.05))
-            .force('y', y$2().strength(0.05));
-
-        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
-        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
-
-    }
-
-    data({ nodes, edges }) {
-        this.reset();
-        this.forceSimulation.nodes(nodes);
-        this.linkForce.links(edges);
-    }
-
-    // 重置状态
-    reset() {
-        this.forceSimulation.alpha(1);
-    }
-
-    start() {
-        this.forceSimulation.stop();
-        this.forceSimulation.alpha(1);
-        // d3-force没有start方法，需要自己模拟
-        this.forceSimulation.restart();
-    }
-
-    resume() {
-        this.forceSimulation.restart();
-    }
-
-    stop() {
-        this.this.forceSimulation.stop();
-    }
-
-}
-
-// https://github.com/mrdoob/three.js/blob/master/src/math/Vector2.js
-
-class Vector2 {
-
-    static fromAddVectors(v1, v2) {
-        return new Vector2(v1.x + v2.x, v1.y + v2.y);
-    }
-
-    static fromSubVectors(v1, v2) {
-        return new Vector2(v1.x - v2.x, v1.y - v2.y); 
-    }
-
-    static fromArray(arr) {
-        return new Vector2(arr[0], arr[1]);
-    }
-
-    constructor(x = 0, y = 0) {
-        this.x = x;
-        this.y = y;
-    }
-
-    set(x, y) {
-        this.x = x;
-        this.y = y;
-        return this;
-    }
-
-    add(v) {
-        this.x += v.x;
-        this.y += v.y;
-        return this;
-    }
-
-    sub(v) {
-        this.x -= v.x;
-        this.y -= v.y;
-        return this;
-    }
-
-    multiply() {}
-
-    divide() {}
-
-    addScalar(v) {
-        this.x += v;
-        this.y += v;
-        return this;
-    }
-
-    subScalar(v) {
-        this.x -= v;
-        this.y -= v;
-        return this;
-    }
-
-    multiplyScalar(scalar) {
-        this.x *= scalar;
-        this.y *= scalar;
-        return this;
-    }
-
-    divideScalar(scalar) {
-        return this.multiplyScalar(1 / scalar);
-    }
-
-    dot(v) {
-        return this.x * v.x + this.y * v.y;
-    }
-
-    cross(v) {
-        return this.x * v.y - this.y * v.x;
-    }
-
-    length() {
-        return Math.sqrt(this.lengthSq());
-    }
-
-    lengthSq() {
-        return this.x * this.x + this.y * this.y;
-    }
-
-    clone() {
-        return new this.constructor(this.x, this.y);
-    }
-
-    // angle > 0 顺时针
-    // angle < 0 逆时针
-    rotateAround(center, angle) {
-        const s = Math.sin(angle),
-              c = Math.cos(angle),
-              x = this.x - center.x,
-              y = this.y - center.y;
-        this.x = c * x - s * y + center.x;
-        this.y = s * x + c * y + center.y;
-        return this;
-    }
-
-}
-
-// https://github.com/mrdoob/three.js/blob/master/src/extras/curves/QuadraticBezierCurve.js
-
-class QuadraticBezierCurve {
-
-    constructor(v0, v1, v2) {
-        this.v0 = v0;
-        this.v1 = v1;
-        this.v2 = v2;
-    }
-
-    getPoint(t, target = new Vector2()) {
-        target.set(
-            QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
-            QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
-        );
-        return target;
-    }
-
-    getDerivative(t) {
-        const v0 = this.v0;
-        const v1 = this.v1;
-        const v2 = this.v2;
-        const t1 = 1 - t;
-        return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
-    }
-
-    static interpolate(t, p0, p1, p2) {
-        const t1 = 1 - t;
-        return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
-    }
-
-}
-
-function getNodeSize(d) {
-    if (d.size) return d.size;
-    const constructor = NetworkGraph.getNodeConstructor(d.type);
-    return constructor.options.size;
-}
-
-function project(p, p1, p2) {
-    const v1 = Vector2.fromSubVectors(p, p1);
-    const v2 = Vector2.fromSubVectors(p2, p1);
-    const k = v1.dot(v2) / v2.lengthSq();
-    return new Vector2().add(p1).add(v2.multiplyScalar(k));
-}
-
-function getMiddlePointOfBezierCurve(start, end, d) {
-    if (start.x === end.x) {
-        return new Vector2(start.x + d, (start.y + end.y) / 2);
-    }
-
-    if (start.y === end.y) {
-        return new Vector2((start.x + end.x) / 2, start.y + d);
-    }
-
-    const a = end.x - start.x;
-    const b = end.y - start.y;
-    const xc = (start.x + end.x) / 2;
-    const yc = (start.y + end.y) / 2;
-    const r = b / a;
-    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
-    const y = yc - sqrtPart;
-    return new Vector2(xc + r * yc - r * y, y);
-}
-
-function getControlPointOfBezierCurve(p0, p1, p2) {
-    const t = 0.5;
-    const mt = (1 - t);
-    const tt = Math.pow(t, 2);
-    const mtt = Math.pow(mt, 2);
-    const d = 2 * t * mt;
-    return new Vector2(
-        (p1.x - tt * p2.x - mtt * p0.x) / d,
-        (p1.y - tt * p2.y - mtt * p0.y) / d,
-    );
-}
-
-function getIntersectPointBetweenCircleAndLine(p0, p1, c, r) {
-    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
-    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
-    const a = 1 + alpha * alpha;
-    const b = -2 * (c.x - alpha * beta + alpha * c.y);
-    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
-    const s = b * b - 4 * a * _c;
-    if (s < 0) {
-        return null;
-    } else if (s === 0) {
-        const u = -b / (2 * a);
-        return new Vector2(u, alpha * u + beta);
-    } else {
-        const u1 = (-b + Math.sqrt(s)) / (2 * a);
-        const u2 = (-b - Math.sqrt(s)) / (2 * a);
-        return [
-            new Vector2(u1, alpha * u1 + beta),
-            new Vector2(u2, alpha * u2 + beta),
-        ];
-    }
-}
-
-function getIntersectPointBetweenCircleAndSegment(p0, p1, c, r) {
-    let points = getIntersectPointBetweenCircleAndLine(p0, p1, c, r);
-    if (points) {
-        const max = Math.max(p0.x, p1.x);
-        const min = Math.min(p0.x, p1.x);
-        if (Array.isArray(points)) {
-            return points.find(point => point.x >= min && point.x <= max);
-        } else {
-            return points.x >= min && points.x <= max ? points : null;
-        }
-    }
-    return points;
-}
-
-function getNewBezierPoint(start, c1, end, r, target) {
-
-    const curve = new QuadraticBezierCurve(start, c1, end);
-
-    function iter(p) {
-        const j1 = getIntersectPointBetweenCircleAndSegment(c1, p, target, r);
-        const pj1 = project(j1, start, end);
-        const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
-        const p2 = curve.getPoint(k);
-        const delta = p2.clone().sub(j1).length();
-
-        if (delta <= 5) {
-            return p2;
-        } else {
-            return iter(p2);
-        }
-    }
-
-    return iter(target);
-
-}
-
-function linkArc(d) {
-    if (typeof d.source === 'string' || typeof d.target === 'string') return '';
-
-    let source = new Vector2(d.source.x, d.source.y);
-    let target = new Vector2(d.target.x, d.target.y);
-    if (target.x < source.x) [source, target] = [target, source];
-
-    if (d.source === d.target) {
-
-        const theta = -Math.PI / 3;
-        const r = getNodeSize(source);
-        const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
-        
-        const angle = Math.PI / 12 * d.sameIndexCorrected;
-        const start = j.clone().rotateAround(source, -angle);
-        const end = j.clone().rotateAround(target, angle);
-        
-        const l = 4 * r;
-        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
-        const c1 = new Vector2(
-            (start.x - source.x) / ratio + source.x,
-            (start.y - source.y) / ratio + source.y,
-        );
-        const c2 = new Vector2(
-            (end.x - target.x) / ratio + target.x,
-            (end.y - target.y) / ratio + target.y,
-        );
-
-        return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
-
-    } else {
-
-        if (d.sameTotal === 1 || d.sameMiddleLink) {
-            const p1 = getIntersectPointBetweenCircleAndSegment(source, target, source, getNodeSize(source));
-            const p2 = getIntersectPointBetweenCircleAndSegment(source, target, target, getNodeSize(target));
-            if (p1 && p2) {
-                return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
-            } else {
-                return '';
-            }
-        } else {
-            const delta = 20;
-            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
-            const c1 = getControlPointOfBezierCurve(source, p1, target);
-            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(source), source);
-            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(target), target);
-            const c2 = getControlPointOfBezierCurve(p2, p1, p3);
-            return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
-        }
-
-    }
-    
-}
-const Edge = {
-
-    create(datum, graph) {
-        const defsSelection = graph.defsSelection;
-        const markerSelection = defsSelection.selectAll('marker.arrow');
-
-        if (markerSelection.empty()) {
-            markerSelection.data(['default', 'selected'])
-                .join('marker')
-                .attr('id', d => `arrow-${d}`)
-                .attr('class', d => `arrow ${d}`)
-                .attr('viewbox', '-10 -5 10 10')
-                .attr('refX', 0)
-                .attr('refY', 0)
-                .attr('markerWidth', 6)
-                .attr('markerHeight', 6)
-                .attr('overflow', 'visible')
-                .attr('orient', 'auto-start-reverse')
-                .append('svg:path')
-                .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
-        }
-
-        const g = create('svg:g')
-            .classed('edge-group', true)
-            .datum(datum);
-
-        g.append('svg:path')
-            .attr('stroke', '#000')
-            .classed('edge', true)
-            .attr('id', `edge-${datum.id}`)
-            .attr('fill', 'none');
-
-        g.append('svg:text')
-            .classed('edge-label', true)
-            // .classed('hidden', datum.visible === false)
-            .append('textPath')
-                .attr('xlink:href', `#edge-${datum.id}`)
-                .attr('text-anchor', 'middle')
-                .attr('startOffset', '50%');
-
-        this.update(g, datum, graph);
-
-        return g;
-    },
-
-    update(selection, datum, graph) {
-        const textPathSelection = selection.select('textPath');
-        textPathSelection.text(datum.label ? datum.label : '');
-
-        const pathSelection = selection.select('path.edge');
-        if (datum.target.x < datum.source.x) {  // 反
-            pathSelection.attr('marker-start', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-            pathSelection.attr('marker-end', 'none');
-        } else {    // 正
-            pathSelection.attr('marker-start', 'none');
-            pathSelection.attr('marker-end', `url(#arrow-${datum.selected ? 'selected' : 'default'}`);
-        }
-
-        pathSelection.attr('d', linkArc);
-    },
-
-};
-
-const style = `
-.node-group.hidden,
-.edge-group.hidden,
-.no-edge-label .edge-label,
-.no-node-label .node-label,
-.no-edge .edge-group {
-    display: none;
-}
-
-.no-edge-direction .edge {
-    marker-start: unset;
-    marker-end: unset;
-}
-`;
-
-class NetworkGraph extends eventemitter3 {
-
-    static registerNode(nodeType, config) {
-        if (!NetworkGraph.nodeConstrutors) NetworkGraph.nodeConstrutors = {};
-        NetworkGraph.nodeConstrutors[nodeType] = config;
-    }
-
-    static registerEdge(edgeType, config) {
-        if (!NetworkGraph.edgeConstructors) NetworkGraph.edgeConstructors = {};
-        NetworkGraph.edgeConstructors[edgeType] = config;
-    }
-
-    static getNodeConstructor(nodeType) {
-        const constructor = NetworkGraph.nodeConstrutors[nodeType];
-        if (constructor) return constructor;
-        return NetworkGraph.nodeConstrutors.default;
-    }
-
-    static getEdgeConstructor(edgeType) {
-        const constructor = NetworkGraph.edgeConstructors[edgeType];
-        if (constructor) return constructor;
-        return NetworkGraph.edgeConstructors.default;
-    }
-
-    static registerBehavior(behaviorName, behavior) {
-        if (!NetworkGraph.behaviors) NetworkGraph.behaviors = {};
-        NetworkGraph.behaviors[behaviorName] = behavior;
-    }
-
-    static getBehavior(behaviorName) {
-        return NetworkGraph.behaviors[behaviorName];
-    }
-
-    constructor({
-        container,
-        width = 300,
-        height = 150,
-        behaviors = [],
-        layout = ForceLayout,
-        style: style$1 = ''
-    } = {}) {
-
-        super();
-
-        // ui状态
-        this._displayNodeLabel = true;
-        this._displayEdge = true;
-        this._displayEdgeLabel = true;
-        this._displayEdgeDirection = true;
-
-        if (container) {
-            this.svgSelection = select(container).append('svg');
-        } else {
-            this.svgSelection = create('svg');
-        }
-        this.svgSelection
-            .classed('network-graph', true)
-            .attr('xmlns', 'http://www.w3.org/2000/svg')
-            .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink')
-            .append('style')
-            .attr('type', 'text/css')
-            .text(style + style$1);
-
-        // d3 selection
-        this.defsSelection = this.svgSelection.append('defs');
-        this.gSelection = this.svgSelection.append('g');
-        this.nodeSelection = null;
-        this.edgeSelection = null;
-        this.edgePathSelection = null;
-
-        this.setViewBox(-width / 2, -height / 2, width, height);
-
-        this.layout = new layout(this);
-
-        this._d3Drag = drag()
-            .on('start', this._transportEvent('dragstart.node'))
-            .on('drag', this._transportEvent('drag.node'))
-            .on('end', this._transportEvent('dragend.node'));
-
-        this._d3Zoom = zoom()
-            .filter(event => !event.ctrlKey)
-            .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
-            // .scaleExtent([1, 8])
-            .on('zoom', this._transportEvent('zoom'))
-            .on('start', this._transportEvent('zoomstart'))
-            .on('end', this._transportEvent('zoomend'));
-        this.svgSelection.call(this._d3Zoom);
-
-        this.svgSelection.on('mousemove', this._transportEvent('mousemove.canvas'));
-        this.svgSelection.on('mousedown', this._transportEvent('mousedown.canvas'));
-        this.svgSelection.on('click', this._transportEvent('click.canvas'));
-        this.svgSelection.on('contextmenu', this._transportEvent('contextmenu.canvas'));
-
-        this.useBehaviors(behaviors);
-
-    }
-
-    setViewBox(left, top, width, height) {
-        this.svgSelection.attr('viewBox', [left, top, width, height])
-            .attr('width', width)
-            .attr('height', height);
-    }
-
-    data(data) {
-        this._data = data;
-
-        const { edges, nodes } = data;
-        const sames = {};
-
-        // 在最后添加假数据占位，避免调用d3.raise时移动了最后一个元素，导致d3.order不工作，边盖在点上
-        if (!this.fakeDataAppended) {
-            this.fakeDataAppended = true;
-            edges.push({
-                source: '__fake_source__',
-                target: '__fake_target__',
-                visible: false,
-            });
-
-            nodes.push({
-                id: '__fake_source__',
-                visible: false
-            }, {
-                id: '__fake_target__',
-                visible: false
-            });
-        }
-
-        edges.forEach(edge => {
-
-            const sourceId = this._getSourceId(edge);
-            const targetId = this._getTargetId(edge);
-            const direction = `${sourceId}-${targetId}`;
-            const directionAlt = `${targetId}-${sourceId}`;
-            if (sames[direction] === undefined) sames[direction] = 0;
-            if (sames[directionAlt] === undefined) sames[directionAlt] = 0;
-            // sameIndex需要同时考虑同向和反向边
-            // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
-            if (direction === directionAlt) {
-                edge.sameIndex = ++sames[direction];
-            } else {
-                edge.sameIndex = ++sames[direction] + sames[directionAlt];
-            }
-            
-        });
-
-        edges.forEach((edge, i) => {
-
-            const sourceId = this._getSourceId(edge);
-            const targetId = this._getTargetId(edge);
-            const same = sames[`${sourceId}-${targetId}`] || 0;
-            const sameAlt = sames[`${targetId}-${sourceId}`] || 0;
-
-            edge.sameTotal = same + sameAlt;
-            edge.sameTotalHalf = edge.sameTotal / 2;
-            edge.sameUneven = edge.sameTotal % 2 !== 0;
-            edge.sameMiddleLink = edge.sameUneven === true && Math.ceil(edge.sameTotalHalf) === edge.sameIndex;
-            edge.sameLowerHalf = edge.sameIndex > edge.sameTotalHalf;
-            edge.sameIndexCorrected = edge.sameLowerHalf ? (Math.ceil(edge.sameTotalHalf) - edge.sameIndex) : edge.sameIndex;
-
-        });
-
-        return data;
-    }
-
-    render({
-        autoLayout = false
-    } = {}) {
-
-        console.log('render');
-
-        // 做动画时每次都会调用render，每次调用render就setData是否影响性能？
-        // 是否有必要每次都setData？
-        // const { nodes, edges } = this.setData(data);
-        const { nodes, edges } = this._data;
-
-        this.gSelection.selectAll('g.edge-group')
-            .data(edges, d => d.id)
-            .join(
-                enter => this._createEdges(enter),
-                update => this._updateEdges(update),
-            );
-
-        // 节点
-        this.gSelection.selectAll('g.node-group')
-            // 必须给key，否则改变元素顺序时，展示会错乱
-            .data(nodes, d => d.id)
-            .join(
-                enter => this._createNodes(enter),
-                update => this._updateNodes(update),
-            );
-
-        this.edgeSelection = this.gSelection.selectAll('g.edge-group');
-        this.nodeSelection = this.gSelection.selectAll('g.node-group');
-        this.edgeLabelSelection = this.gSelection.selectAll('text.edge-label');
-
-        const selectedNodes = this.nodeSelection.filter(d => d.selected);
-        const selectedEdges = this.edgeSelection.filter(d => d.selected);
-
-        this.gSelection.classed('hasSelected', selectedNodes.size() > 0 || selectedEdges.size() > 0);
-
-        // 选中的元素放在最后，这样展示时会在最上层
-        selectedEdges.raise();
-        this.edgeLabelSelection.filter(d => d.selected).raise();
-        selectedNodes.raise();
-
-        // this.layout.data(this._data);
-        // if (autoLayout) {
-        //     this.layout.start();
-        // }
-
-    }
-
-    selectNodes(ids) {
-        const { nodes } = this._data;
-        for(let node of nodes) {
-            if (ids.includes(node.id)) {
-                node.selected = true;
-            } else {
-                node.selected = false;
-            }
-        }
-        this.render(this._data);
-    }
-
-    selectEdges(ids) {
-        const { edges } = this._data;
-        for(let edge of edges) {
-            const flag = ids.includes(edge.id);
-            edge.selected = flag;
-        }
-        this.render(this._data);
-    }
-
-    clearSelect() {
-        const { nodes, edges } = this._data;
-        for(let node of nodes) {
-            node.selected = false;
-        }
-        for(let edge of edges) {
-            edge.selected = false;
-        }
-        this.render(this._data);
-    }
-
-    toggleEdge(flag) {
-        if (typeof flag === 'boolean') {
-            this._displayEdge = flag;
-        } else {
-            this._displayEdge = !this._displayEdge;
-        }
-        this.gSelection.classed('no-edge', !this._displayEdge);
-    }
-
-    toggleEdgeLabel(flag) {
-        if (typeof flag === 'boolean') {
-            this._displayEdgeLabel = flag;
-        } else {
-            this._displayEdgeLabel = !this._displayEdgeLabel;
-        }
-        this.gSelection.classed('no-edge-label', !this._displayEdgeLabel);
-    }
-
-    // BUG: 布局停止后隐藏箭头，会导致边计算错误
-    toggleEdgeDirection(flag) {
-        if (typeof flag === 'boolean') {
-            this._displayEdgeDirection = flag;
-        } else {
-            this._displayEdgeDirection = !this._displayEdgeDirection;
-        }
-        this.gSelection.classed('no-edge-direction', !this._displayEdgeDirection);
-        this.render(this._data);
-    }
-
-    toggleNodeLabel(flag) {
-        if (typeof flag === 'boolean') {
-            this._displayNodeLabel = flag;
-        } else {
-            this._displayNodeLabel = !this._displayNodeLabel;
-        }
-        this.gSelection.classed('no-node-label', !this._displayNodeLabel);
-    }
-
-    useBehavior(behaviorName) {
-        const BehaviorConstructor = NetworkGraph.getBehavior(behaviorName);
-        if (!BehaviorConstructor) return;
-
-        if (!this._behaviors) this._behaviors = {};
-
-        const behavior = new BehaviorConstructor(this);
-        this._behaviors[behaviorName] = behavior;
-        behavior.use();
-    }
-
-    unuseBehavior(behaviorName) {
-        if (!this._behaviors) return;
-        const behavior = this._behaviors[behaviorName];
-        if (behavior) behavior.destroy();
-    }
-
-    useBehaviors(behaviors) {
-        behaviors.forEach(behaviorName => this.useBehavior(behaviorName));
-    }
-
-    unuseBehaviors(behaviors) {
-        behaviors.forEach(behaviorName => this.unuseBehavior(behaviorName));
-    }
-
-    addNode(node) {
-        this._data.nodes.push(node);
-        this.render(this._data);
-    }
-
-    removeNode(node) {
-        const index = this._data.nodes.indexOf(node);
-        this._data.nodes.splice(index, 1);
-        this.render(this._data);
-    }
-
-    findNode(fn) {
-        return this._data.nodes.filter(fn);
-    }
-
-    addEdge(edge) {
-        this._data.edges.push(edge);
-        this.render(this._data);
-    }
-
-    removeEdge(edge) {
-        const index = this._data.edges.indexOf(edge);
-        this._data.edges.splice(index, 1);
-        this.render(this._data);
-    }
-
-    findEdge(fn) {
-        return this._data.edges.filter(fn);
-    }
-
-    toSVG() {
-        const {x, y, width, height} = this.gSelection.node().getBBox();
-        const newNode = this.svgSelection.node().cloneNode(true);
-        newNode.setAttribute('viewBox', `${x}, ${y}, ${width}, ${height}`);
-        newNode.setAttribute('width', width);
-        newNode.setAttribute('height', height);
-        return {
-            width,
-            height,
-            content: newNode.outerHTML,
-        }
-    }
-
-    toDataURL(type, encoderOptions) {}
-
-    // 初始化时source是字符串，之后d3将它替换为对象
-    _getSourceId(edge) {
-        if (typeof edge.source === 'string') {
-            return edge.source;
-        } else {
-            return edge.source.id;
-        }
-    }
-
-    // 初始化时target是字符串，之后d3将它替换为对象
-    _getTargetId(edge) {
-        if (typeof edge.target === 'string') {
-            return edge.target;
-        } else {
-            return edge.target.id;
-        }
-    }
-
-    _createNodes(enter) {
-        const nodeSelection = enter.append(d => {
-            const constructor = NetworkGraph.getNodeConstructor(d.type);
-            const selection = constructor.create(d, this);
-            return selection.node();
-        });
-
-        nodeSelection.on('click', this._transportEvent('click.node'));
-        nodeSelection.on('mouseenter', this._transportEvent('mouseenter.node'));
-        nodeSelection.on('mouseleave', this._transportEvent('mouseleave.node'));
-        nodeSelection.on('contextmenu', this._transportEvent('contextmenu.node'));
-
-        nodeSelection.attr('id', d => d.id)
-            .classed('node-group', true)
-            .call(this._d3Drag);
-
-        return nodeSelection;
-    }
-
-    _updateNodes(nodeSelection, graph) {
-        // 这里对每个节点单独执行更新操作
-        // TODO: 先筛选出每类节点，然后批量更新每类节点，会不会更快？
-        nodeSelection.each(function(d, i, nodes) {
-            console.log('node update');
-            const constructor = NetworkGraph.getNodeConstructor(d.type);
-            const selection = select(this);
-            constructor.update(selection, d, graph);
-        });
-
-        nodeSelection.classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
-
-        return nodeSelection;
-    }
-
-    _createEdges(enter) {
-        const edgeSelection = enter.append(d => {
-            const constructor = NetworkGraph.getEdgeConstructor(d.type);
-            const selection = constructor.create(d, this);
-            return selection.node();
-        });
-
-        edgeSelection.on('click', this._transportEvent('click.edge'));
-        edgeSelection.on('contextmenu', this._transportEvent('contextmenu.edge'));
-        
-        return edgeSelection;
-    }
-
-    _updateEdges(edgeSelection, graph) {
-        edgeSelection.each(function(d) {
-            console.log('edge update');
-            const constructor = NetworkGraph.getEdgeConstructor(d.type);
-            const selection = select(this);
-            constructor.update(selection, d, graph);
-        });
-
-        edgeSelection.classed('selected', d => d.selected)
-            .classed('activated', d => d.activated)
-            .classed('hidden', d => d.visible === false);
-
-        return edgeSelection;
-    }
-
-    _transportEvent(eventName) {
-        if (!this._transportedEvents) this._transportedEvents = {};
-        if (!this._transportedEvents[eventName]) {
-            this._transportedEvents[eventName] = (e, d) => {
-                this.emit(eventName, e, d);
-            };
-        }
-        return this._transportedEvents[eventName];
-    }
-
-}
-
-NetworkGraph.nodeConstrutors = {
-    default: {
-        options: {
-            size: 15,
-            labelSize: 14
-        },
-        // TODO：create是否一定需要返回一个node，是否可以直接在svg添加标签？
-        create(datum, graph) {
-            // 必须手动绑定数据
-            const groupSelection = create('svg:g').datum(datum);
-            const size = this.options.size;
-            const labelSize = this.options.labelSize;
-
-            groupSelection.append('circle')
-                .classed('node', true)
-                .attr('r', size);
-
-            groupSelection.append('text')
-                .text(datum.label)
-                .attr('x', 0)
-                .attr('y', size + labelSize)
-                .style('font-size', labelSize)
-                .attr('text-anchor', 'middle')
-                .classed('node-label', true);
-
-            this.update(groupSelection, datum, graph);
-
-            return groupSelection;
-        },
-        update(selection, datum, graph) {
-            selection.attr('transform', d => `translate(${d.x || 0}, ${d.y || 0})`);
-        }
-    }
-};
-
-NetworkGraph.registerEdge('default', Edge);
-
-NetworkGraph.registerBehavior('dragDrop', DragDropBehavior);
-NetworkGraph.registerBehavior('clickSelect', ClickSelectBehavior);
-NetworkGraph.registerBehavior('zoom', ZoomBehavior);
-
-NetworkGraph.Behavior = Behavior;
-
-class D3Renderer {
+class D3Renderer extends eventemitter3 {
 
     constructor({
         svg
     } = {}) {
+        super();
+
         if (svg && svg instanceof SVGElement) {
             this.rootSelection = select(svg);
         } else {
@@ -20969,7 +19931,9 @@ class D3Renderer {
             .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
         this.rootSelection.append('defs');
-        this._gSelection = this.rootSelection.append('g');
+        this._gSelection = this.rootSelection
+            .append('g')
+            .classed('canvas', true);
     }
 
     setViewBox(x, y, width, height) {
@@ -20982,7 +19946,7 @@ class D3Renderer {
             .attr('height', height);
     }
 
-    domElement() {
+    rootElement() {
         return this.rootSelection.node();
     }
 
@@ -20999,9 +19963,16 @@ class D3Renderer {
             .join(
                 enter => enter.append('g')
                     .classed('edge', true)
+                    // .on('click', transportEvent('click.node', this))
+                    // .on('mouseenter', transportEvent('mouseenter.node', this))
+                    // .on('mouseleave', transportEvent('mouseleave.node', this))
+                    // .on('contextmenu', transportEvent('contextmenu.node', this))
                     .each(function(edge) {
                         console.log('create edge');
                         edge.view.create(edge.data, select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('created.edge', enter);
                     })
             )
             .each(function(edge) {
@@ -21018,6 +19989,9 @@ class D3Renderer {
                     .each(function(node) {
                         console.log('create node');
                         node.view.create(node.data, select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('created.node', enter);
                     })
             )
             .each(function(node) {
@@ -50734,7 +49708,7 @@ class ReactGraph extends react.Component {
         // };
     }
 
-    domElement() {
+    rootElement() {
         return this.svgRef.current;
     }
 
@@ -50796,8 +49770,8 @@ class ReactRenderer {
         // this.graphRef.current.setState({ width, height });
     }
 
-    domElement() {
-        return this.graphRef.current.domElement();
+    rootElement() {
+        return this.graphRef.current.rootElement();
     }
 
     render(graph) {
@@ -50991,7 +49965,7 @@ class Node$2 {
 
 }
 
-class Edge$1 {
+class Edge {
 
     type = 'edge'
     
@@ -51009,7 +49983,7 @@ class Edge$1 {
 
 }
 
-class Layout$1 extends eventemitter3 {
+class Layout extends eventemitter3 {
 
     constructor(graph) {
         super();
@@ -51026,7 +50000,7 @@ class Layout$1 extends eventemitter3 {
 
 }
 
-class ForceLayout$1 extends Layout$1 {
+class ForceLayout extends Layout {
 
     constructor(...args) {
         super(...args);
@@ -51078,24 +50052,25 @@ class ForceLayout$1 extends Layout$1 {
 
 class ZoomControl extends eventemitter3 {
 
-    constructor(rootElem, wrapperElem) {
+    constructor(graph) {
         super();
 
-        const selection = select(wrapperElem);
-        const { width, height } = rootElem.getBoundingClientRect();
+        const rootSelection = graph.renderer.rootSelection;
+        const wrapperSelection = rootSelection.select('g.canvas');
+        const { width, height } = rootSelection.node().getBoundingClientRect();
         const d3Zoom = zoom()
             .filter(event => !event.ctrlKey)
             .extent([[-width / 2, -height / 2], [width / 2, height / 2]])
             // .scaleExtent([1, 8])
             .on('zoom', event => {
                 const { transform } = event;
-                selection.attr('transform', transform);
+                wrapperSelection.attr('transform', transform);
                 this.emit('zoom', event);
             })
             .on('start', event => this.emit('zoomstart', event))
             .on('end', event => this.emit('zoomend', event));
 
-        select(rootElem).call(d3Zoom);
+        rootSelection.call(d3Zoom);
         this.d3Zoom = d3Zoom;
     }
 
@@ -51103,13 +50078,13 @@ class ZoomControl extends eventemitter3 {
 
 class DragControl extends eventemitter3 {
 
-    constructor(renderer, graph) {
+    constructor(graph) {
         super();
 
         const updatePositionEndRender = function(event, d) {
             d.data.x = event.x;
             d.data.y = event.y;
-            renderer.render(graph);
+            graph.renderer.render(graph.model);
         };
 
         const d3Drag = drag()
@@ -51117,308 +50092,12 @@ class DragControl extends eventemitter3 {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        select(renderer.domElement())
-            .selectAll('g.node')
-                .call(d3Drag);
+        graph.renderer.on('created.node', (enter) => enter.call(d3Drag));
     }
 
 }
 
-class Node$3 extends react.Component {
-
-    constructor(props) {
-        super(props);
-
-        this.domRef = react.createRef();
-    }
-
-    render() {
-        const {
-            x = 0, 
-            y = 0, 
-            size = 15, 
-            labelSize= 14, 
-            label,
-            id,
-            hideLabel,
-            hidden
-        } = this.props.data;
-        return react.createElement(
-            'g', 
-            {
-                ref: this.domRef,
-                id,
-                className: 'node',
-                transform: `translate(${x}, ${y})`,
-                style: {
-                    display: hidden ? 'none' : 'unset'
-                }
-            }, 
-            react.createElement(
-                'circle', 
-                { 
-                    r: size 
-                }
-            ), 
-            react.createElement(
-                'text', 
-                { 
-                    x: 0, 
-                    y: size + labelSize, 
-                    fontSize: labelSize, 
-                    textAnchor: 'middle',
-                    style: {
-                        display: hideLabel ? 'none' : 'unset'
-                    }
-                },
-                label
-            )
-        );
-    }
-
-}
-
-function getNodeSize$1(d) {
-    if (d.size) return d.size;
-}
-
-function project$1(p, p1, p2) {
-    const v1 = Vector2.fromSubVectors(p, p1);
-    const v2 = Vector2.fromSubVectors(p2, p1);
-    const k = v1.dot(v2) / v2.lengthSq();
-    return new Vector2().add(p1).add(v2.multiplyScalar(k));
-}
-
-function getMiddlePointOfBezierCurve$1(start, end, d) {
-    if (start.x === end.x) {
-        return new Vector2(start.x + d, (start.y + end.y) / 2);
-    }
-
-    if (start.y === end.y) {
-        return new Vector2((start.x + end.x) / 2, start.y + d);
-    }
-
-    const a = end.x - start.x;
-    const b = end.y - start.y;
-    const xc = (start.x + end.x) / 2;
-    const yc = (start.y + end.y) / 2;
-    const r = b / a;
-    const sqrtPart = d / Math.sqrt(Math.pow(r, 2) + 1);
-    const y = yc - sqrtPart;
-    return new Vector2(xc + r * yc - r * y, y);
-}
-
-function getControlPointOfBezierCurve$1(p0, p1, p2) {
-    const t = 0.5;
-    const mt = (1 - t);
-    const tt = Math.pow(t, 2);
-    const mtt = Math.pow(mt, 2);
-    const d = 2 * t * mt;
-    return new Vector2(
-        (p1.x - tt * p2.x - mtt * p0.x) / d,
-        (p1.y - tt * p2.y - mtt * p0.y) / d,
-    );
-}
-
-function getIntersectPointBetweenCircleAndLine$1(p0, p1, c, r) {
-    const alpha = (p1.y - p0.y) / (p1.x - p0.x);
-    const beta = (p1.x * p0.y - p0.x * p1.y) / (p1.x - p0.x);
-    const a = 1 + alpha * alpha;
-    const b = -2 * (c.x - alpha * beta + alpha * c.y);
-    const _c = c.x * c.x + beta * beta - 2 * beta * c.y + c.y * c.y - r * r;
-    const s = b * b - 4 * a * _c;
-    if (s < 0) {
-        return null;
-    } else if (s === 0) {
-        const u = -b / (2 * a);
-        return new Vector2(u, alpha * u + beta);
-    } else {
-        const u1 = (-b + Math.sqrt(s)) / (2 * a);
-        const u2 = (-b - Math.sqrt(s)) / (2 * a);
-        return [
-            new Vector2(u1, alpha * u1 + beta),
-            new Vector2(u2, alpha * u2 + beta),
-        ];
-    }
-}
-
-function getIntersectPointBetweenCircleAndSegment$1(p0, p1, c, r) {
-    let points = getIntersectPointBetweenCircleAndLine$1(p0, p1, c, r);
-    if (points) {
-        const max = Math.max(p0.x, p1.x);
-        const min = Math.min(p0.x, p1.x);
-        if (Array.isArray(points)) {
-            return points.find(point => point.x >= min && point.x <= max);
-        } else {
-            return points.x >= min && points.x <= max ? points : null;
-        }
-    }
-    return points;
-}
-
-function getNewBezierPoint$1(start, c1, end, r, target) {
-
-    const curve = new QuadraticBezierCurve(start, c1, end);
-
-    function iter(p) {
-        const j1 = getIntersectPointBetweenCircleAndSegment$1(c1, p, target, r);
-        const pj1 = project$1(j1, start, end);
-        const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
-        const p2 = curve.getPoint(k);
-        const delta = p2.clone().sub(j1).length();
-
-        if (delta <= 5) {
-            return p2;
-        } else {
-            return iter(p2);
-        }
-    }
-
-    return iter(target);
-
-}
-
-function linkArc$1(d) {
-    // debugger;
-    // if (typeof d.source === 'string' || typeof d.target === 'string') return '';
-
-    let source = new Vector2(d.source.x, d.source.y);
-    let target = new Vector2(d.target.x, d.target.y);
-    if (target.x < source.x) [source, target] = [target, source];
-
-    if (d.source === d.target) {
-
-        const theta = -Math.PI / 3;
-        const r = getNodeSize$1(d.source);
-        const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
-
-        const angle = Math.PI / 12 * d.sameIndexCorrected;
-        const start = j.clone().rotateAround(source, -angle);
-        const end = j.clone().rotateAround(target, angle);
-
-        const l = 4 * r;
-        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
-        const c1 = new Vector2(
-            (start.x - source.x) / ratio + source.x,
-            (start.y - source.y) / ratio + source.y,
-        );
-        const c2 = new Vector2(
-            (end.x - target.x) / ratio + target.x,
-            (end.y - target.y) / ratio + target.y,
-        );
-
-        return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
-
-    } else {
-
-        if (d.sameTotal === 1 || d.sameMiddleLink) {
-            const p1 = getIntersectPointBetweenCircleAndSegment$1(source, target, source, getNodeSize$1(d.source));
-            const p2 = getIntersectPointBetweenCircleAndSegment$1(source, target, target, getNodeSize$1(d.target));
-            if (p1 && p2) {
-                return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
-            } else {
-                return '';
-            }
-        } else {
-            const delta = 20;
-            const p1 = getMiddlePointOfBezierCurve$1(source, target, delta * d.sameIndexCorrected);
-            const c1 = getControlPointOfBezierCurve$1(source, p1, target);
-            const p2 = getNewBezierPoint$1(source, c1, target, getNodeSize$1(d.source), source);
-            const p3 = getNewBezierPoint$1(source, c1, target, getNodeSize$1(d.target), target);
-            const c2 = getControlPointOfBezierCurve$1(p2, p1, p3);
-            return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
-        }
-
-    }
-
-}
-class Edge$2 extends react.Component {
-
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        const {
-            id,
-            label,
-            source,
-            target,
-            hideLabel,
-            hidden,
-        } = this.props.data;
-        const arrowId = `arrow-${id}`;
-        const pathId = `edge-path-${id}`;
-        return react.createElement(
-            'g',
-            {
-                id,
-                className: 'edge',
-                style: {
-                    display: hidden ? 'none' : 'unset'
-                }
-            },
-            react.createElement(
-                'defs',
-                null,
-                react.createElement(
-                    'marker',
-                    {
-                        id: arrowId,
-                        className: 'arrow',
-                        viewBox: '-10 -5 10 10',
-                        refX: 0,
-                        refY: 0,
-                        markerWidth: 6,
-                        markerHeight: 6,
-                        overflow: 'visible',
-                        orient: 'auto-start-reverse'
-                    },
-                    react.createElement(
-                        'path',
-                        {
-                            d: 'M -10,-5 L 0 ,0 L -10,5'
-                        }
-                    )
-                )
-            ),
-            react.createElement(
-                'path',
-                {
-                    stroke: '#000',
-                    className: 'edge-path',
-                    fill: 'none',
-                    id: pathId,
-                    markerStart: target.x < source.x ? `url(#${arrowId})` : 'none',
-                    markerEnd: target.x < source.x ? 'none' : `url(#${arrowId})`,
-                    d: linkArc$1(this.props.data)
-                }
-            ),
-            react.createElement(
-                'text',
-                {
-                    className: 'edge-label',
-                    style: {
-                        display: hideLabel ? 'none' : 'unset'
-                    }
-                },
-                react.createElement(
-                    'textPath',
-                    {
-                        xlinkHref: `#${pathId}`,
-                        textAnchor: 'middle',
-                        startOffset: '50%',
-                    },
-                    label
-                )
-            )
-
-        );
-    }
-
-}
-
-var Node$4 = {
+var D3Node = {
     type: 'node',
     create(datum, selection) {
         selection.append('circle');
@@ -51447,6 +50126,157 @@ var Node$4 = {
             .attr('text-anchor', 'middle');
     }
 };
+
+// https://github.com/mrdoob/three.js/blob/master/src/math/Vector2.js
+
+class Vector2 {
+
+    static fromAddVectors(v1, v2) {
+        return new Vector2(v1.x + v2.x, v1.y + v2.y);
+    }
+
+    static fromSubVectors(v1, v2) {
+        return new Vector2(v1.x - v2.x, v1.y - v2.y); 
+    }
+
+    static fromArray(arr) {
+        return new Vector2(arr[0], arr[1]);
+    }
+
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+
+    set(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    add(v) {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+    }
+
+    sub(v) {
+        this.x -= v.x;
+        this.y -= v.y;
+        return this;
+    }
+
+    multiply() {}
+
+    divide() {}
+
+    addScalar(v) {
+        this.x += v;
+        this.y += v;
+        return this;
+    }
+
+    subScalar(v) {
+        this.x -= v;
+        this.y -= v;
+        return this;
+    }
+
+    multiplyScalar(scalar) {
+        this.x *= scalar;
+        this.y *= scalar;
+        return this;
+    }
+
+    divideScalar(scalar) {
+        return this.multiplyScalar(1 / scalar);
+    }
+
+    dot(v) {
+        return this.x * v.x + this.y * v.y;
+    }
+
+    cross(v) {
+        return this.x * v.y - this.y * v.x;
+    }
+
+    length() {
+        return Math.sqrt(this.lengthSq());
+    }
+
+    lengthSq() {
+        return this.x * this.x + this.y * this.y;
+    }
+
+    clone() {
+        return new this.constructor(this.x, this.y);
+    }
+
+    // angle > 0 顺时针
+    // angle < 0 逆时针
+    rotateAround(center, angle) {
+        const s = Math.sin(angle),
+              c = Math.cos(angle),
+              x = this.x - center.x,
+              y = this.y - center.y;
+        this.x = c * x - s * y + center.x;
+        this.y = s * x + c * y + center.y;
+        return this;
+    }
+
+}
+
+// https://github.com/mrdoob/three.js/blob/master/src/extras/curves/QuadraticBezierCurve.js
+
+class QuadraticBezierCurve {
+
+    constructor(v0, v1, v2) {
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+
+    getPoint(t, target = new Vector2()) {
+        target.set(
+            QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+            QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
+        );
+        return target;
+    }
+
+    getDerivative(t) {
+        const v0 = this.v0;
+        const v1 = this.v1;
+        const v2 = this.v2;
+        const t1 = 1 - t;
+        return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
+    }
+
+    getLUT(size) {
+        const lut = [];
+
+        if (size < 2) return lut;
+
+        let cur = 0;
+        while(cur < size) {
+            const t = cur / (size - 1);
+            lut.push({
+                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                t
+            });
+            cur++;
+        }
+
+        return lut;
+    }
+
+    static interpolate(t, p0, p1, p2) {
+        const t1 = 1 - t;
+        return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
+    }
+
+}
 
 class Line {
     
@@ -51537,18 +50367,18 @@ function intersectSegmentAndCircle(line, circle) {
     return points;
 }
 
-function getNodeSize$2(d) {
+function getNodeSize(d) {
     if (d.size) return d.size;
 }
 
-function project$2(p, p1, p2) {
+function project(p, p1, p2) {
     const v1 = Vector2.fromSubVectors(p, p1);
     const v2 = Vector2.fromSubVectors(p2, p1);
     const k = v1.dot(v2) / v2.lengthSq();
     return new Vector2().add(p1).add(v2.multiplyScalar(k));
 }
 
-function getMiddlePointOfBezierCurve$2(start, end, d) {
+function getMiddlePointOfBezierCurve(start, end, d) {
     if (start.x === end.x) {
         return new Vector2(start.x + d, (start.y + end.y) / 2);
     }
@@ -51567,7 +50397,7 @@ function getMiddlePointOfBezierCurve$2(start, end, d) {
     return new Vector2(xc + r * yc - r * y, y);
 }
 
-function getControlPointOfBezierCurve$2(p0, p1, p2) {
+function getControlPointOfBezierCurve(p0, p1, p2) {
     const t = 0.5;
     const mt = (1 - t);
     const tt = Math.pow(t, 2);
@@ -51579,7 +50409,7 @@ function getControlPointOfBezierCurve$2(p0, p1, p2) {
     );
 }
 
-function getNewBezierPoint$2(start, c1, end, r, target) {
+function getNewBezierPoint(start, c1, end, r, target) {
 
     const curve = new QuadraticBezierCurve(start, c1, end);
 
@@ -51587,7 +50417,7 @@ function getNewBezierPoint$2(start, c1, end, r, target) {
         const line = new Line(c1, p);
         const circle = new Line$1(target, r);
         const j1 = intersectSegmentAndCircle(line, circle);
-        const pj1 = project$2(j1, start, end);
+        const pj1 = project(j1, start, end);
         const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
         const p2 = curve.getPoint(k);
         const delta = p2.clone().sub(j1).length();
@@ -51603,7 +50433,7 @@ function getNewBezierPoint$2(start, c1, end, r, target) {
 
 }
 
-function linkArc$2(d) {
+function linkArc(d) {
     let source = new Vector2(d.data.source.x, d.data.source.y);
     let target = new Vector2(d.data.target.x, d.data.target.y);
     if (target.x < source.x) [source, target] = [target, source];
@@ -51611,7 +50441,7 @@ function linkArc$2(d) {
     if (d.data.source === d.data.target) {
 
         const theta = -Math.PI / 3;
-        const r = getNodeSize$2(d.data.source);
+        const r = getNodeSize(d.data.source);
         const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
         
         const angle = Math.PI / 12 * d.data.sameIndexCorrected;
@@ -51635,8 +50465,8 @@ function linkArc$2(d) {
 
         if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {
             const line = new Line(source, target);
-            const sourceCircle = new Line$1(source, getNodeSize$2(d.data.source));
-            const targetCircle = new Line$1(target, getNodeSize$2(d.data.target)); 
+            const sourceCircle = new Line$1(source, getNodeSize(d.data.source));
+            const targetCircle = new Line$1(target, getNodeSize(d.data.target)); 
             const p1 = intersectSegmentAndCircle(line, sourceCircle);
             const p2 = intersectSegmentAndCircle(line, targetCircle);
             if (p1 && p2) {
@@ -51646,18 +50476,18 @@ function linkArc$2(d) {
             }
         } else {
             const delta = 20;
-            const p1 = getMiddlePointOfBezierCurve$2(source, target, delta * d.data.sameIndexCorrected);
-            const c1 = getControlPointOfBezierCurve$2(source, p1, target);
-            const p2 = getNewBezierPoint$2(source, c1, target, getNodeSize$2(d.data.source), source);
-            const p3 = getNewBezierPoint$2(source, c1, target, getNodeSize$2(d.data.target), target);
-            const c2 = getControlPointOfBezierCurve$2(p2, p1, p3);
+            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.data.sameIndexCorrected);
+            const c1 = getControlPointOfBezierCurve(source, p1, target);
+            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.source), source);
+            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.target), target);
+            const c2 = getControlPointOfBezierCurve(p2, p1, p3);
             return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
         }
 
     }
     
 }
-var Edge$3 = {
+var D3Edge = {
 
     type: 'edge',
 
@@ -51707,61 +50537,65 @@ var Edge$3 = {
             pathSelection.attr('marker-end', `url(#arrow-${datum.id}`);
         }
 
-        pathSelection.attr('d', linkArc$2);
+        pathSelection.attr('d', linkArc);
     }
 
 };
 
-function draggableComponent(Component, {
-    onDragstart,
-    onDrag,
-    onDragend,
-}) {
-
-    const d3Drag = drag()
-        .on('start', function(e) { onDragstart(e, this); })
-        .on('drag', function(e) { onDrag(e, this); })
-        .on('end', function(e) { onDragend(e, this); });
-
-    return class extends react.Component {
-
-        constructor(props) {
-            super(props);
-            this.ref = react.createRef();
-
-            // this.d3Drag = d3.drag()
-            //     // .on('start', e => onDragstart(e, this))
-            //     .on('start', function(e) { onDragstart(e, this) })
-            //     .on('drag', e => onDrag(e, this))
-            //     .on('end', e => onDragend(e, this))
-        }
-
-        componentDidMount() {
-            const nodeComponet = this.ref.current;
-            select(nodeComponet.domRef.current).call(d3Drag);
-        }
-
-        // componentWillUnmount() {
-        //     this.d3Drag
-        //         .on('start', null)
-        //         .on('drag', null)
-        //         .on('end', null);
-        // }
-
-        render() {
-            const props = this.props;
-            // return React.createElement(Component, { ref: this.ref, ...props });
-            return react.createElement(
-                Component,
-                {
-                    ref: this.ref,
-                    ...props
-                }
-            );
-        }
-
-    }
+class NetworkGraph extends eventemitter3 {
     
+    constructor({
+        container,
+        width = 300,
+        height = 150,
+        data
+    }) {
+        super();
+
+        this.renderer = new D3Renderer();
+        this.renderer.setSize(width, height);
+        this.renderer.setViewBox(-width / 2, -height / 2, width, height);
+
+        if (container) {
+            if (typeof container === 'string') {
+                document.querySelector(container).appendChild(this.renderer.rootElement());
+            } else {
+                container.appendChild(this.renderer.rootElement());
+            }
+        }
+
+        this.layout = new ForceLayout();
+        this.dragControl = new DragControl(this);
+        this.zoomControl = new ZoomControl(this);
+
+        if (data) {
+            this.data(data);
+            this.render();
+        }
+    }
+
+    data(data) {
+        this.model = new Graph();
+        data.nodes.forEach(d => this.model.addNode(new Node$2(d, D3Node)));
+        data.edges.forEach(d => this.model.addEdge(new Edge(d, D3Edge)));
+
+        this.layout.data({
+            nodes: this.model.getNodes().map(d => d.data),
+            edges: this.model.getEdges().map(d => d.data)
+        });
+    }
+
+    render() {
+        const layout = this.layout;
+
+        {
+            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
+                layout.forceSimulation.tick();
+            }
+            this.renderer.render(this.model);
+        }
+    }
+
 }
 
-export { Edge$3 as D3Edge, Node$4 as D3Node, D3Renderer, DragControl, draggableComponent as DraggableComponent, Edge$1 as Edge, ForceLayout$1 as ForceLayout, Graph, NetworkGraph, Node$2 as Node, Edge$2 as ReactEdge, Node$3 as ReactNode, ReactRenderer, ZoomControl, index$5 as d3 };
+export { D3Edge, D3Node, D3Renderer, DragControl, Edge, ForceLayout, Graph, NetworkGraph, Node$2 as Node, ReactRenderer, ZoomControl, index$5 as d3 };

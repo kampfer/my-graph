@@ -16,10 +16,18 @@
             top: 20px;
             width: 325px;
         }
+        #pane-container2 {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 325px;
+        }
     </style>
 </head>
 <body>
+    <div id="graph"></div>
     <div id="pane-container"></div>
+    <div id="pane-container2"></div>
     <script src="../lib/tweakpane-3.0.7.min.js"></script>
     <script src="../lib/lodash.min.js"></script>
     <script>
@@ -76,47 +84,25 @@
             'display edge label': true,
             'display node label': true,
         };
+
+        const curNode = {
+            label: ''
+        };
+        const curEdge = {
+            label: ''
+        };
     </script>
     <script type="module">
-        import { D3Renderer, Graph, Node, Edge, D3Node, D3Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
+        import { NetworkGraph } from '../../dist/graph.js';
 
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        const renderer = new D3Renderer();
-        renderer.setSize(width, height);
-        renderer.setViewBox(-width / 2, -height / 2, width, height);
-        document.body.appendChild(renderer.domElement());
-
-        const domElement = renderer.domElement();
-        const gElement = renderer.domElement().querySelector('g');
-        const control = new ZoomControl(domElement, gElement);
-        // control.on('zoomstart', () => {
-        //     if (graph.getEdges().length + graph.getNodes().length > 2000) {
-        //         // graph.toggleEdge(false);     
-        //     }
-        // });
-
-        let graph, layout;
         function renderRandom() {
             const data = makeData(settings.node, settings.edge);
-
-            graph = new Graph();
-            layout = new ForceLayout(graph);
-            data.nodes.forEach(d => graph.addNode(new Node(d, D3Node)));
-            data.edges.forEach(d => graph.addEdge(new Edge(d, D3Edge)));
-            layout.data({
-                nodes: graph.getNodes().map(d => d.data),
-                edges: graph.getEdges().map(d => d.data)
+            new NetworkGraph({
+                container: '#graph',
+                width: window.innerWidth,
+                height: window.innerHeight,
+                data
             });
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-                console.log('layout tick');
-            }
-            renderer.render(graph);
-            // layout.on('tick', () => renderer.render(graph));
-            // layout.start();
-
-            const dragControl = new DragControl(renderer, graph);
         }
 
         const pane = new Tweakpane.Pane({
@@ -149,6 +135,11 @@
                 console.log('relayout tick');
             }
             renderer.render(graph)
+        });
+
+        const pane2 = new Tweakpane.Pane({
+            container: document.getElementById('pane-container2'),
+            title: '属性'
         });
 
         renderRandom();
