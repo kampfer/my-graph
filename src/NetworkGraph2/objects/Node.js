@@ -1,22 +1,25 @@
-export default class Node {
+import EventEmitter from 'eventemitter3';
+
+export default class Node extends EventEmitter {
 
     type = 'node'
 
-    // constructor({
-    //     id,
-    //     x = 0,
-    //     y = 0,
-    //     label = ''
-    // } = {}) {
-    //     this.id = id;
-    //     this.x = x;
-    //     this.y = y;
-    //     this.label = label;
-    //     this.size = 15;
-    // }
-
     constructor(data, view) {
-        this.data = { size: 15, ...data };
+        super();
+        const self = this;
+        this.data = new Proxy({ 
+            size: 15,
+            ...data
+        }, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', node: self });
+                return true;
+            }
+        });
         this.view = view;
     }
 

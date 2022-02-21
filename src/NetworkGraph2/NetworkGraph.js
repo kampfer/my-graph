@@ -32,7 +32,7 @@ export default class NetworkGraph extends EventEmitter {
             }
         }
 
-        this.layout = new ForceLayout();
+        this.placer = new ForceLayout();
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);
@@ -40,34 +40,39 @@ export default class NetworkGraph extends EventEmitter {
 
         if (data) {
             this.data(data);
+            this.layout();
             this.render();
         }
     }
 
     data(data) {
         this.model = new Graph();
+
         data.nodes.forEach(d => this.model.addNode(new Node(d, D3Node)));
         data.edges.forEach(d => this.model.addEdge(new Edge(d, D3Edge)));
+    }
 
-        this.layout.data({
+    layout(useStatic = true) {
+        const placer = this.placer;
+        
+        placer.reset();
+        // 这里直接引用元素data
+        placer.data({
             nodes: this.model.getNodes().map(d => d.data),
             edges: this.model.getEdges().map(d => d.data)
         });
+
+        if (useStatic) {
+            while(placer.forceSimulation.alpha() > placer.forceSimulation.alphaMin()) {
+                placer.forceSimulation.tick();
+            }
+        } else {
+            placer.start();
+        }
     }
 
     render() {
-        const layout = this.layout;
-
-        layout.reset();
-        if (true) {
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-            }
-            this.renderer.render(this.model);
-        } else {
-            layout.on('tick', () => this.renderer.render(this.model));
-            layout.start();
-        }
+        this.renderer.render(this.model);
     }
 
     toggleAllNodes(flag) {

@@ -10,11 +10,14 @@ export default class Graph extends Object {
 
     constructor(...args) {
         super(...args);
-        // this._edgeMap = {};
+
+        this.transportUpdateNodeEvent = (e) => this.emit('updatenode', { type: 'updatenode', node: e.node });
+        this.transportUpdateEdgeEvent = (e) => this.emit('updateedge', { type: 'updateedge', node: e.edge });
     }
 
     addNode(node) {
         super.addChild(node);
+        node.on('update', this.transportUpdateNodeEvent);
     }
 
     getNodeById(id) {
@@ -31,7 +34,10 @@ export default class Graph extends Object {
     }
 
     addEdges(edges) {
-        edges.forEach(edge => super.prependChild(edge));
+        edges.forEach(edge => {
+            super.prependChild(edge);
+            edge.on('update', this.transportUpdateEdgeEvent);
+        });
         this._updateEdges();
     }
 
@@ -39,6 +45,7 @@ export default class Graph extends Object {
     // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
     addEdge(edge) {
         super.prependChild(edge);
+        edge.on('update', this.transportUpdateEdgeEvent);
         this._updateEdges();
     }
 

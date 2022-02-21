@@ -1,4 +1,6 @@
-export default class Edge {
+import EventEmitter from 'eventemitter3';
+
+export default class Edge extends EventEmitter {
 
     type = 'edge'
     
@@ -10,7 +12,18 @@ export default class Edge {
     // }
 
     constructor(data, view) {
-        this.data = data;
+        super();
+        const self = this;
+        this.data = new Proxy(data, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', edge: self });
+                return true;
+            }
+        });
         this.view = view;
     }
 

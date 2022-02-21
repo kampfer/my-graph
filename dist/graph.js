@@ -49792,9 +49792,10 @@ class ReactRenderer {
 
 }
 
-class Object$1 {
+class Object$1 extends eventemitter3 {
 
     constructor() {
+        super();
         this._children = [];
         this._parent = null;
     }
@@ -49853,11 +49854,14 @@ class Graph extends Object$1 {
 
     constructor(...args) {
         super(...args);
-        // this._edgeMap = {};
+
+        this.transportUpdateNodeEvent = (e) => this.emit('updatenode', { type: 'updatenode', node: e.node });
+        this.transportUpdateEdgeEvent = (e) => this.emit('updateedge', { type: 'updateedge', node: e.edge });
     }
 
     addNode(node) {
         super.addChild(node);
+        node.on('update', this.transportUpdateNodeEvent);
     }
 
     getNodeById(id) {
@@ -49874,7 +49878,10 @@ class Graph extends Object$1 {
     }
 
     addEdges(edges) {
-        edges.forEach(edge => super.prependChild(edge));
+        edges.forEach(edge => {
+            super.prependChild(edge);
+            edge.on('update', this.transportUpdateEdgeEvent);
+        });
         this._updateEdges();
     }
 
@@ -49882,6 +49889,7 @@ class Graph extends Object$1 {
     // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
     addEdge(edge) {
         super.prependChild(edge);
+        edge.on('update', this.transportUpdateEdgeEvent);
         this._updateEdges();
     }
 
@@ -49937,31 +49945,32 @@ class Graph extends Object$1 {
 
 }
 
-class Node$2 {
+class Node$2 extends eventemitter3 {
 
     type = 'node'
 
-    // constructor({
-    //     id,
-    //     x = 0,
-    //     y = 0,
-    //     label = ''
-    // } = {}) {
-    //     this.id = id;
-    //     this.x = x;
-    //     this.y = y;
-    //     this.label = label;
-    //     this.size = 15;
-    // }
-
     constructor(data, view) {
-        this.data = { size: 15, ...data };
+        super();
+        const self = this;
+        this.data = new Proxy({ 
+            size: 15,
+            ...data
+        }, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', node: self });
+                return true;
+            }
+        });
         this.view = view;
     }
 
 }
 
-class Edge {
+class Edge extends eventemitter3 {
 
     type = 'edge'
     
@@ -49973,7 +49982,18 @@ class Edge {
     // }
 
     constructor(data, view) {
-        this.data = data;
+        super();
+        const self = this;
+        this.data = new Proxy(data, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', edge: self });
+                return true;
+            }
+        });
         this.view = view;
     }
 
@@ -50110,7 +50130,7 @@ var D3Node = {
         selection
             .classed('selected', datum.selected)
             .classed('hidden', datum.hidden)
-            .attr('display', datum.hidden === true ? 'none' : 'unset')
+            .style('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
@@ -50545,12 +50565,9 @@ class ClickSelectControl extends eventemitter3 {
 
     constructor(graph) {
         super();
-
-        const self = this;
         const handleClick = function (e, node) {
             node.data.selected = true;
             graph.renderer.render(graph.model);
-            self.emit('select.node', node);
         };
 
         graph.renderer.on('created.node', enter => {
@@ -50582,7 +50599,7 @@ class NetworkGraph extends eventemitter3 {
             }
         }
 
-        this.layout = new ForceLayout();
+        this.placer = new ForceLayout();
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);
@@ -50590,31 +50607,39 @@ class NetworkGraph extends eventemitter3 {
 
         if (data) {
             this.data(data);
+            this.layout();
             this.render();
         }
     }
 
     data(data) {
         this.model = new Graph();
+
         data.nodes.forEach(d => this.model.addNode(new Node$2(d, D3Node)));
         data.edges.forEach(d => this.model.addEdge(new Edge(d, D3Edge)));
+    }
 
-        this.layout.data({
+    layout(useStatic = true) {
+        const placer = this.placer;
+        
+        placer.reset();
+        // 这里直接引用元素data
+        placer.data({
             nodes: this.model.getNodes().map(d => d.data),
             edges: this.model.getEdges().map(d => d.data)
         });
+
+        if (useStatic) {
+            while(placer.forceSimulation.alpha() > placer.forceSimulation.alphaMin()) {
+                placer.forceSimulation.tick();
+            }
+        } else {
+            placer.start();
+        }
     }
 
     render() {
-        const layout = this.layout;
-
-        layout.reset();
-        {
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-            }
-            this.renderer.render(this.model);
-        }
+        this.renderer.render(this.model);
     }
 
     toggleAllNodes(flag) {

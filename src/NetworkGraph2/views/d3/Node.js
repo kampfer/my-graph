@@ -15,7 +15,7 @@ export default {
         selection
             .classed('selected', datum.selected)
             .classed('hidden', datum.hidden)
-            .attr('display', datum.hidden === true ? 'none' : 'unset')
+            .style('display', datum.hidden === true ? 'none' : 'unset')
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')

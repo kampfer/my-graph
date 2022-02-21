@@ -1,6 +1,9 @@
-export default class Object {
+import EventEmitter from 'eventemitter3';
+
+export default class Object extends EventEmitter {
 
     constructor() {
+        super();
         this._children = [];
         this._parent = null;
     }

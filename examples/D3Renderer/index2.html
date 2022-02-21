@@ -110,13 +110,15 @@
                 height: window.innerHeight,
                 data
             });
-            graph.clickSelectControl.on('select.node', node => {
-                curNode.ref = node;
-                curNode.label = node.data.label;
-                curNode.position.x = node.data.x;
-                curNode.position.y = node.data.y;
-                pane2.refresh();
+            graph.model.on('updatenode', ({ node }) => {
+                if (node.data.selected) {
+                    curNode.position.x = node.data.x;
+                    curNode.position.y = node.data.y;
+                    curNode.label = node.data.label;
+                    pane2.refresh();
+                }
             });
+            graph.model.on('updateedge', () => {});
         }
 
         const pane = new Tweakpane.Pane({
@@ -133,20 +135,25 @@
         folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
         folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleAllNodeLabels(value));
 
-        pane.addButton({title: 'layout'}).on('click', () => graph.render(graph.model));
+        pane.addButton({title: 'layout'}).on('click', () => {
+            graph.layout();
+            graph.render();
+        });
 
         const pane2 = new Tweakpane.Pane({
             container: document.getElementById('pane-container2'),
             title: '属性'
         });
         pane2.addInput(curNode, 'label').on('change', ({ value }) => {
-            curNode.ref.data.label = value;
-            graph.renderer.render(graph.model);
+            // if (curNode.ref) {
+            //     curNode.ref.data.label = value;
+            //     graph.renderer.render(graph.model);
+            // }
         });
         pane2.addInput(curNode, 'position').on('change', ({ value }) => {
-            curNode.ref.data.x = value.x;
-            curNode.ref.data.y = value.y;
-            graph.renderer.render(graph.model);
+            // curNode.ref.data.x = value.x;
+            // curNode.ref.data.y = value.y;
+            // graph.renderer.render(graph.model);
         });
 
         renderRandom();
