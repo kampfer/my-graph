@@ -19,6 +19,7 @@ export default {
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
+            .attr('fill', datum.color)
             .attr('r', size);
 
         selection.select('text')
@@ -26,7 +27,9 @@ export default {
             .style('display', datum.hideLabel === true ? 'none' : 'unset')
             .attr('x', 0)
             .attr('y', size + labelSize)
-            .style('font-size', labelSize)
+            .attr('font-size', labelSize)
+            .attr('stroke', 'none')
+            .attr('fill', datum.labelColor)
             .attr('text-anchor', 'middle');
     }
 }

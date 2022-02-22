@@ -49877,6 +49877,14 @@ class Graph extends Object$1 {
         return this.filterChild(d => d.type === 'node');
     }
 
+    eachNode(callback) {
+        this.traverse(child => {
+            if (child.type === 'node') {
+                callback(child);
+            }
+        });
+    }
+
     addEdges(edges) {
         edges.forEach(edge => {
             super.prependChild(edge);
@@ -49903,6 +49911,14 @@ class Graph extends Object$1 {
 
     getEdges() {
         return this.filterChild(d => d.type === 'edge');
+    }
+
+    eachEdge(callback) {
+        this.traverse(child => {
+            if (child.type === 'edge') {
+                callback(child);
+            }
+        });
     }
 
     _updateEdges() {
@@ -50134,6 +50150,7 @@ var D3Node = {
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
+            .attr('fill', datum.color)
             .attr('r', size);
 
         selection.select('text')
@@ -50141,7 +50158,9 @@ var D3Node = {
             .style('display', datum.hideLabel === true ? 'none' : 'unset')
             .attr('x', 0)
             .attr('y', size + labelSize)
-            .style('font-size', labelSize)
+            .attr('font-size', labelSize)
+            .attr('stroke', 'none')
+            .attr('fill', datum.labelColor)
             .attr('text-anchor', 'middle');
     }
 };
@@ -50565,8 +50584,19 @@ class ClickSelectControl extends eventemitter3 {
 
     constructor(graph) {
         super();
+
         const handleClick = function (e, node) {
-            node.data.selected = true;
+            graph.model.eachNode(child => {
+                const hit = child.data.id === node.data.id;
+                child.data.selected = hit;
+                if (hit) {
+                    child.data.color = '#99f';
+                    child.data.size = 20;
+                } else {
+                    child.data.color = '#000';
+                    child.data.size = 15;
+                }
+            });
             graph.renderer.render(graph.model);
         };
 

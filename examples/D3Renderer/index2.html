@@ -52,7 +52,10 @@
                     id,
                     label: id,
                     hidden: !settings['display node'],
-                    hideLabel: !settings['display node label']
+                    hideLabel: !settings['display node label'],
+                    color: 'black',
+                    size: 15,
+                    labelColor: '#000'
                 });
             }
             for (let i = 0; i < edgeCount; i++) {
@@ -88,9 +91,11 @@
         const curNode = {
             ref: null,
             position: { x: 0, y: 0 },
+            size: 0,
+            color: '#000',
             label: '',
             labelSize: 12,
-            labelColor: 'black'
+            labelColor: '#000'
         };
 
         const curEdge = {
@@ -112,9 +117,12 @@
             });
             graph.model.on('updatenode', ({ node }) => {
                 if (node.data.selected) {
+                    curNode.ref = node;
                     curNode.position.x = node.data.x;
                     curNode.position.y = node.data.y;
                     curNode.label = node.data.label;
+                    curNode.size = node.data.size;
+                    curNode.color = node.data.color;
                     pane2.refresh();
                 }
             });
@@ -142,18 +150,44 @@
 
         const pane2 = new Tweakpane.Pane({
             container: document.getElementById('pane-container2'),
-            title: '属性'
+            title: 'node属性'
+        });        
+        pane2.addInput(curNode, 'position').on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.x = value.x;
+                curNode.ref.data.y = value.y;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'color').on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.color = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'size', { min: 10, max: 30 }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.size = value;
+                graph.renderer.render(graph.model);
+            }
         });
         pane2.addInput(curNode, 'label').on('change', ({ value }) => {
-            // if (curNode.ref) {
-            //     curNode.ref.data.label = value;
-            //     graph.renderer.render(graph.model);
-            // }
+            if (curNode.ref) {
+                curNode.ref.data.label = value;
+                graph.renderer.render(graph.model);
+            }
         });
-        pane2.addInput(curNode, 'position').on('change', ({ value }) => {
-            // curNode.ref.data.x = value.x;
-            // curNode.ref.data.y = value.y;
-            // graph.renderer.render(graph.model);
+        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30 }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.labelSize = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'labelColor').on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.labelColor = value;
+                graph.renderer.render(graph.model);
+            }
         });
 
         renderRandom();

@@ -33,6 +33,14 @@ export default class Graph extends Object {
         return this.filterChild(d => d.type === 'node');
     }
 
+    eachNode(callback) {
+        this.traverse(child => {
+            if (child.type === 'node') {
+                callback(child);
+            }
+        });
+    }
+
     addEdges(edges) {
         edges.forEach(edge => {
             super.prependChild(edge);
@@ -59,6 +67,14 @@ export default class Graph extends Object {
 
     getEdges() {
         return this.filterChild(d => d.type === 'edge');
+    }
+
+    eachEdge(callback) {
+        this.traverse(child => {
+            if (child.type === 'edge') {
+                callback(child);
+            }
+        });
     }
 
     _updateEdges() {
