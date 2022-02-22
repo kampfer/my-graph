@@ -21,6 +21,7 @@
             right: 20px;
             top: 20px;
             width: 300px;
+            display: none;
         }
     </style>
 </head>
@@ -105,6 +106,7 @@
     <script type="module">
         import { NetworkGraph } from '../../dist/graph.js';
 
+        const pane2Container = document.getElementById('pane-container2');
         let graph;
         function renderRandom() {
             if (graph) graph.destroy();
@@ -115,9 +117,16 @@
                 height: window.innerHeight,
                 data
             });
+            graph.model.on('selectNode', ({ target }) => {
+                pane2Container.style.display = 'unset';
+                curNode.ref = target;
+            });
+            graph.model.on('clearSelect', () => {
+                curNode.ref = null;
+                pane2Container.style.display = 'none';
+            });
             graph.model.on('updatenode', ({ node }) => {
                 if (node.data.selected) {
-                    curNode.ref = node;
                     curNode.position.x = node.data.x;
                     curNode.position.y = node.data.y;
                     curNode.label = node.data.label;

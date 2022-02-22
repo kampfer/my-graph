@@ -41,6 +41,8 @@ export default class Graph extends Object {
         });
     }
 
+    removeNode() {}
+
     addEdges(edges) {
         edges.forEach(edge => {
             super.prependChild(edge);
@@ -68,6 +70,8 @@ export default class Graph extends Object {
     getEdges() {
         return this.filterChild(d => d.type === 'edge');
     }
+
+    removeEdge() {}
 
     eachEdge(callback) {
         this.traverse(child => {

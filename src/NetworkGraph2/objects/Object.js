@@ -50,4 +50,8 @@ export default class Object extends EventEmitter {
         return this._children;
     }
 
+    removeAllChildren() {
+        this._children = [];
+    }
+
 }

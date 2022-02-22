@@ -17,7 +17,7 @@ export default class DragControl extends EventEmitter {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        graph.renderer.on('created.node', (enter) => enter.call(d3Drag));
+        graph.renderer.on('createdNode', (enter) => enter.call(d3Drag));
     }
 
 }

@@ -1,4 +1,3 @@
-import EventEmitter from 'eventemitter3';
 import D3Renderer from './renderers/d3/D3Renderer';
 import Graph from './objects/Graph';
 import Node from './objects/Node';
@@ -10,7 +9,7 @@ import DragControl from './controls/DragControl';
 import ZoomControl from './controls/ZoomControl';
 import ClickSelectControl from './controls/ClickSelectControl';
 
-export default class NetworkGraph extends EventEmitter {
+export default class NetworkGraph {
     
     constructor({
         container,
@@ -18,8 +17,6 @@ export default class NetworkGraph extends EventEmitter {
         height = 150,
         data
     }) {
-        super();
-
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
         this.renderer.setViewBox(-width / 2, -height / 2, width, height);
@@ -37,6 +34,8 @@ export default class NetworkGraph extends EventEmitter {
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);
         this.model = null;
+
+        // this.clickSelectControl.on('selectNode', (e) => this.emit('selectNode', e));
 
         if (data) {
             this.data(data);

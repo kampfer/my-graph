@@ -1,18 +1,6 @@
 import * as d3 from 'd3';
 import EventEmitter from 'eventemitter3';
 
-const transportEvent = (function () {
-    const fnMaps = {};
-    return function (eventName, context) {
-        if (!fnMaps[eventName]) {
-            fnMaps[eventName] = function (...args) {
-                context.emit(eventName, ...args);
-            };
-        }
-        return fnMaps[eventName];
-    };
-})();
-
 export default class D3Renderer extends EventEmitter {
 
     constructor({
@@ -69,7 +57,7 @@ export default class D3Renderer extends EventEmitter {
                         edge.view.create(edge.data, d3.select(this));
                     })
                     .call((enter) => {
-                        this.emit('created.edge', enter);
+                        this.emit('createdEdge', enter);
                     })
             )
             .each(function(edge) {
@@ -88,7 +76,7 @@ export default class D3Renderer extends EventEmitter {
                         node.view.create(node.data, d3.select(this));
                     })
                     .call((enter) => {
-                        this.emit('created.node', enter);
+                        this.emit('createdNode', enter);
                     })
             )
             .each(function(node) {

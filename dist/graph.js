@@ -19968,7 +19968,7 @@ class D3Renderer extends eventemitter3 {
                         edge.view.create(edge.data, select(this));
                     })
                     .call((enter) => {
-                        this.emit('created.edge', enter);
+                        this.emit('createdEdge', enter);
                     })
             )
             .each(function(edge) {
@@ -19987,7 +19987,7 @@ class D3Renderer extends eventemitter3 {
                         node.view.create(node.data, select(this));
                     })
                     .call((enter) => {
-                        this.emit('created.node', enter);
+                        this.emit('createdNode', enter);
                     })
             )
             .each(function(node) {
@@ -49842,6 +49842,10 @@ class Object$1 extends eventemitter3 {
         return this._children;
     }
 
+    removeAllChildren() {
+        this._children = [];
+    }
+
 }
 
 function getId(object) {
@@ -49885,6 +49889,8 @@ class Graph extends Object$1 {
         });
     }
 
+    removeNode() {}
+
     addEdges(edges) {
         edges.forEach(edge => {
             super.prependChild(edge);
@@ -49912,6 +49918,8 @@ class Graph extends Object$1 {
     getEdges() {
         return this.filterChild(d => d.type === 'edge');
     }
+
+    removeEdge() {}
 
     eachEdge(callback) {
         this.traverse(child => {
@@ -50124,7 +50132,7 @@ class DragControl extends eventemitter3 {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        graph.renderer.on('created.node', (enter) => enter.call(d3Drag));
+        graph.renderer.on('createdNode', (enter) => enter.call(d3Drag));
     }
 
 }
@@ -50586,12 +50594,14 @@ class ClickSelectControl extends eventemitter3 {
         super();
 
         const handleClick = function (e, node) {
+            e.stopPropagation();
             graph.model.eachNode(child => {
                 const hit = child.data.id === node.data.id;
                 child.data.selected = hit;
                 if (hit) {
                     child.data.color = '#99f';
                     child.data.size = 20;
+                    graph.model.emit('selectNode', { type: 'selectNode', target: child });
                 } else {
                     child.data.color = '#000';
                     child.data.size = 15;
@@ -50600,14 +50610,21 @@ class ClickSelectControl extends eventemitter3 {
             graph.renderer.render(graph.model);
         };
 
-        graph.renderer.on('created.node', enter => {
-            enter.on('click', handleClick);
+        graph.renderer.on('createdNode', enter => enter.on('click', handleClick));
+        graph.renderer.rootSelection.on('click', (e) => {
+            graph.model.eachNode(child => {
+                child.data.selected = false;
+                child.data.color = '#000';
+                child.data.size = 15;
+            });
+            graph.renderer.render(graph.model);
+            graph.model.emit('clearSelect', { type: 'clearSelect' });
         });
     }
 
 }
 
-class NetworkGraph extends eventemitter3 {
+class NetworkGraph {
     
     constructor({
         container,
@@ -50615,8 +50632,6 @@ class NetworkGraph extends eventemitter3 {
         height = 150,
         data
     }) {
-        super();
-
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
         this.renderer.setViewBox(-width / 2, -height / 2, width, height);
@@ -50634,6 +50649,8 @@ class NetworkGraph extends eventemitter3 {
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);
         this.model = null;
+
+        // this.clickSelectControl.on('selectNode', (e) => this.emit('selectNode', e));
 
         if (data) {
             this.data(data);
