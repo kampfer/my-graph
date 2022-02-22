@@ -11,8 +11,8 @@ export default class Graph extends Object {
     constructor(...args) {
         super(...args);
 
-        this.transportUpdateNodeEvent = (e) => this.emit('updatenode', { type: 'updatenode', node: e.node });
-        this.transportUpdateEdgeEvent = (e) => this.emit('updateedge', { type: 'updateedge', node: e.edge });
+        this.transportUpdateNodeEvent = (e) => this.emit('updateNode', { type: 'updatenode', target: e.node });
+        this.transportUpdateEdgeEvent = (e) => this.emit('updateEdge', { type: 'updateedge', target: e.edge });
     }
 
     addNode(node) {

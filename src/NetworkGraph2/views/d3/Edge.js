@@ -144,7 +144,7 @@ export default {
             .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
 
         selection.append('path')
-            .attr('stroke', '#000')
+            // .attr('stroke', '#000')
             .classed('edge', true)
             .attr('id', `edge-${datum.id}`)
             .attr('fill', 'none');
@@ -161,18 +161,26 @@ export default {
     update(datum, selection) {
         selection.attr('display', datum.hidden === true ? 'none' : 'unset');
 
-        selection.select('text').attr('display', datum.hideLabel === true ? 'none' : 'unset');
+        selection.select('text')
+            .attr('font-size', datum.labelSize)
+            .attr('stroke', 'none')
+            .attr('fill', datum.labelColor)
+            .attr('display', datum.hideLabel === true ? 'none' : 'unset');
+
+        selection.select('marker')
+            .attr('fill', datum.color);
 
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '')
 
         const pathSelection = selection.select('path.edge');
+        pathSelection.attr('stroke', datum.color);
         if (datum.target.x < datum.source.x) {  // 反
-            pathSelection.attr('marker-start', `url(#arrow-${datum.id}`);
+            pathSelection.attr('marker-start', `url(#arrow-${datum.id})`);
             pathSelection.attr('marker-end', 'none');
         } else {    // 正
             pathSelection.attr('marker-start', 'none');
-            pathSelection.attr('marker-end', `url(#arrow-${datum.id}`);
+            pathSelection.attr('marker-end', `url(#arrow-${datum.id})`);
         }
 
         pathSelection.attr('d', linkArc);

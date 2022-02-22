@@ -49859,8 +49859,8 @@ class Graph extends Object$1 {
     constructor(...args) {
         super(...args);
 
-        this.transportUpdateNodeEvent = (e) => this.emit('updatenode', { type: 'updatenode', node: e.node });
-        this.transportUpdateEdgeEvent = (e) => this.emit('updateedge', { type: 'updateedge', node: e.edge });
+        this.transportUpdateNodeEvent = (e) => this.emit('updateNode', { type: 'updatenode', target: e.node });
+        this.transportUpdateEdgeEvent = (e) => this.emit('updateEdge', { type: 'updateedge', target: e.edge });
     }
 
     addNode(node) {
@@ -50552,7 +50552,7 @@ var D3Edge = {
             .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
 
         selection.append('path')
-            .attr('stroke', '#000')
+            // .attr('stroke', '#000')
             .classed('edge', true)
             .attr('id', `edge-${datum.id}`)
             .attr('fill', 'none');
@@ -50569,18 +50569,26 @@ var D3Edge = {
     update(datum, selection) {
         selection.attr('display', datum.hidden === true ? 'none' : 'unset');
 
-        selection.select('text').attr('display', datum.hideLabel === true ? 'none' : 'unset');
+        selection.select('text')
+            .attr('font-size', datum.labelSize)
+            .attr('stroke', 'none')
+            .attr('fill', datum.labelColor)
+            .attr('display', datum.hideLabel === true ? 'none' : 'unset');
+
+        selection.select('marker')
+            .attr('fill', datum.color);
 
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '');
 
         const pathSelection = selection.select('path.edge');
+        pathSelection.attr('stroke', datum.color);
         if (datum.target.x < datum.source.x) {  // 反
-            pathSelection.attr('marker-start', `url(#arrow-${datum.id}`);
+            pathSelection.attr('marker-start', `url(#arrow-${datum.id})`);
             pathSelection.attr('marker-end', 'none');
         } else {    // 正
             pathSelection.attr('marker-start', 'none');
-            pathSelection.attr('marker-end', `url(#arrow-${datum.id}`);
+            pathSelection.attr('marker-end', `url(#arrow-${datum.id})`);
         }
 
         pathSelection.attr('d', linkArc);
@@ -50593,7 +50601,7 @@ class ClickSelectControl extends eventemitter3 {
     constructor(graph) {
         super();
 
-        const handleClick = function (e, node) {
+        const handleClickNode = function (e, node) {
             e.stopPropagation();
             graph.model.eachNode(child => {
                 const hit = child.data.id === node.data.id;
@@ -50610,12 +50618,32 @@ class ClickSelectControl extends eventemitter3 {
             graph.renderer.render(graph.model);
         };
 
-        graph.renderer.on('createdNode', enter => enter.on('click', handleClick));
+        const handleClickEdge = function (e, edge) {
+            e.stopPropagation();
+            graph.model.eachEdge(child => {
+                const hit = child.data.id === edge.data.id;
+                child.data.selected = hit;
+                if (hit) {
+                    child.data.color = '#99f';
+                    graph.model.emit('selectEdge', { type: 'selectEdge', target: child });
+                } else {
+                    child.data.color = '#000';
+                }
+            });
+            graph.renderer.render(graph.model);
+        };
+
+        graph.renderer.on('createdNode', enter => enter.on('click', handleClickNode));
+        graph.renderer.on('createdEdge', enter => enter.on('click', handleClickEdge));
         graph.renderer.rootSelection.on('click', (e) => {
-            graph.model.eachNode(child => {
+            graph.model.traverse(child => {
                 child.data.selected = false;
-                child.data.color = '#000';
-                child.data.size = 15;
+                if (child.type === 'node') {
+                    child.data.color = '#000';
+                    child.data.size = 15;
+                } else {
+                    child.data.color = '#000';
+                }
             });
             graph.renderer.render(graph.model);
             graph.model.emit('clearSelect', { type: 'clearSelect' });

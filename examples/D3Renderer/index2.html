@@ -16,7 +16,8 @@
             top: 20px;
             width: 300px;
         }
-        #pane-container2 {
+        #pane-container2,
+        #pane-container3 {
             position: fixed;
             right: 20px;
             top: 20px;
@@ -29,6 +30,7 @@
     <div id="graph"></div>
     <div id="pane-container"></div>
     <div id="pane-container2"></div>
+    <div id="pane-container3"></div>
     <script src="../lib/tweakpane-3.0.7.min.js"></script>
     <script src="../lib/lodash.min.js"></script>
     <script>
@@ -69,6 +71,9 @@
                 data.edges.push({
                     id,
                     label: id,
+                    labelColor: '#000',
+                    labelSize: 12,
+                    color: '#000',
                     source: source.id,
                     target: target.id,
                     hidden: !settings['display edge'],
@@ -100,13 +105,18 @@
         };
 
         const curEdge = {
+            ref: null,
             label: '',
+            labelSize: 12,
+            labelColor: '#000',
+            color: '#000',
         };
     </script>
     <script type="module">
         import { NetworkGraph } from '../../dist/graph.js';
 
         const pane2Container = document.getElementById('pane-container2');
+        const pane3Container = document.getElementById('pane-container3');
         let graph;
         function renderRandom() {
             if (graph) graph.destroy();
@@ -121,21 +131,35 @@
                 pane2Container.style.display = 'unset';
                 curNode.ref = target;
             });
+            graph.model.on('selectEdge', ({ target }) => {
+                pane3Container.style.display = 'unset';
+                curEdge.ref = target;
+            });
             graph.model.on('clearSelect', () => {
                 curNode.ref = null;
+                curEdge.ref = null;
                 pane2Container.style.display = 'none';
+                pane3Container.style.display = 'none';
             });
-            graph.model.on('updatenode', ({ node }) => {
-                if (node.data.selected) {
-                    curNode.position.x = node.data.x;
-                    curNode.position.y = node.data.y;
-                    curNode.label = node.data.label;
-                    curNode.size = node.data.size;
-                    curNode.color = node.data.color;
+            graph.model.on('updateNode', ({ target }) => {
+                if (target.data.selected) {
+                    curNode.position.x = target.data.x;
+                    curNode.position.y = target.data.y;
+                    curNode.label = target.data.label;
+                    curNode.size = target.data.size;
+                    curNode.color = target.data.color;
                     pane2.refresh();
                 }
             });
-            graph.model.on('updateedge', () => {});
+            graph.model.on('updateEdge', ({ target }) => {
+                if (target.data.selected) {
+                    curEdge.label = target.data.label;
+                    curEdge.labelColor = target.data.labelColor;
+                    curEdge.labelSize = target.data.labelSize;
+                    curEdge.color = target.data.color;
+                    pane3.refresh();
+                }
+            });
         }
 
         const pane = new Tweakpane.Pane({
@@ -186,7 +210,7 @@
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30 }).on('change', ({ value }) => {
+        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30, step: 1 }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelSize = value;
                 graph.renderer.render(graph.model);
@@ -195,6 +219,35 @@
         pane2.addInput(curNode, 'labelColor').on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelColor = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+
+        const pane3 = new Tweakpane.Pane({
+            container: document.getElementById('pane-container3'),
+            title: 'edge属性'
+        });    
+        pane3.addInput(curEdge, 'label').on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.label = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane3.addInput(curEdge, 'labelSize', { min: 10, max: 30, step: 1 }).on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.labelSize = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane3.addInput(curEdge, 'labelColor').on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.labelColor = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane3.addInput(curEdge, 'color').on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.color = value;
                 graph.renderer.render(graph.model);
             }
         });
