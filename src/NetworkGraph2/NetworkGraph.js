@@ -35,8 +35,6 @@ export default class NetworkGraph {
         this.clickSelectControl = new ClickSelectControl(this);
         this.model = null;
 
-        // this.clickSelectControl.on('selectNode', (e) => this.emit('selectNode', e));
-
         if (data) {
             this.data(data);
             this.layout();

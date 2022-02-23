@@ -73,9 +73,17 @@ function getNewBezierPoint(start, c1, end, r, target) {
 function linkArc(d) {
     let source = new Vector2(d.data.source.x, d.data.source.y);
     let target = new Vector2(d.data.target.x, d.data.target.y);
-    if (target.x < source.x) [source, target] = [target, source];
+    let sourceSize = getNodeSize(d.data.source);
+    let targetSize = getNodeSize(d.data.target);
 
-    if (d.data.source === d.data.target) {
+    // 保证x坐标更小的节点是source节点
+    // 这样才能保证文字是从左往右的
+    if (target.x < source.x) {
+        [source, target] = [target, source];
+        [sourceSize, targetSize] = [targetSize, sourceSize];
+    }
+
+    if (d.data.source === d.data.target) {  // 环形
 
         const theta = -Math.PI / 3;
         const r = getNodeSize(d.data.source);
@@ -100,10 +108,10 @@ function linkArc(d) {
 
     } else {
 
-        if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {
+        if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {  // 直线
             const line = new Line(source, target);
-            const sourceCircle = new Circle(source, getNodeSize(d.data.source));
-            const targetCircle = new Circle(target, getNodeSize(d.data.target)); 
+            const sourceCircle = new Circle(source, sourceSize);
+            const targetCircle = new Circle(target, targetSize);
             const p1 = intersectSegmentAndCircle(line, sourceCircle);
             const p2 = intersectSegmentAndCircle(line, targetCircle);
             if (p1 && p2) {
@@ -111,12 +119,12 @@ function linkArc(d) {
             } else {
                 return '';
             }
-        } else {
+        } else {    // 曲线
             const delta = 20;
             const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.data.sameIndexCorrected);
             const c1 = getControlPointOfBezierCurve(source, p1, target);
-            const p2 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.source), source);
-            const p3 = getNewBezierPoint(source, c1, target, getNodeSize(d.data.target), target);
+            const p2 = getNewBezierPoint(source, c1, target, sourceSize, source);
+            const p3 = getNewBezierPoint(source, c1, target, targetSize, target);
             const c2 = getControlPointOfBezierCurve(p2, p1, p3);
             return `M ${p2.x} ${p2.y} Q ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
         }
