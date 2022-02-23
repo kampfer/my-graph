@@ -129,10 +129,12 @@
             });
             graph.model.on('selectNode', ({ target }) => {
                 pane2Container.style.display = 'unset';
+                pane3Container.style.display = 'none';
                 curNode.ref = target;
             });
             graph.model.on('selectEdge', ({ target }) => {
                 pane3Container.style.display = 'unset';
+                pane2Container.style.display = 'none';
                 curEdge.ref = target;
             });
             graph.model.on('clearSelect', () => {
@@ -142,7 +144,7 @@
                 pane3Container.style.display = 'none';
             });
             graph.model.on('updateNode', ({ target }) => {
-                if (target.data.selected) {
+                if (curNode.ref && target.data.id === curNode.ref.data.id) {
                     curNode.position.x = target.data.x;
                     curNode.position.y = target.data.y;
                     curNode.label = target.data.label;
@@ -152,7 +154,7 @@
                 }
             });
             graph.model.on('updateEdge', ({ target }) => {
-                if (target.data.selected) {
+                if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
                     curEdge.label = target.data.label;
                     curEdge.labelColor = target.data.labelColor;
                     curEdge.labelSize = target.data.labelSize;
