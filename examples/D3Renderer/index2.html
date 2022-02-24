@@ -14,14 +14,14 @@
             position: fixed;
             left: 20px;
             top: 20px;
-            width: 300px;
+            width: 270px;
         }
         #pane-container2,
         #pane-container3 {
             position: fixed;
             right: 20px;
             top: 20px;
-            width: 300px;
+            width: 250px;
             display: none;
         }
     </style>
@@ -172,13 +172,13 @@
         });
 
         const folder1 = pane.addFolder({ title: '图元数量' });
-        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', _.debounce(renderRandom, 500));
-        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', _.debounce(renderRandom, 500));
+        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1, label: '节点' }).on('change', _.debounce(renderRandom, 500));
+        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1, label: '边' }).on('change', _.debounce(renderRandom, 500));
 
         const folder2 = pane.addFolder({ title: '渲染' });
-        folder2.addInput(settings, 'display edge').on('change', ({ value }) => graph.toggleAllEdges(value));
-        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
-        folder2.addInput(settings, 'display node label').on('change', ({ value }) => graph.toggleAllNodeLabels(value));
+        folder2.addInput(settings, 'display edge', { label: '显示边' }).on('change', ({ value }) => graph.toggleAllEdges(value));
+        folder2.addInput(settings, 'display edge label', { label: '显示边文字' }).on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
+        folder2.addInput(settings, 'display node label', { label: '显示节点文字' }).on('change', ({ value }) => graph.toggleAllNodeLabels(value));
 
         pane.addButton({title: 'layout'}).on('click', () => {
             graph.layout();
@@ -189,38 +189,38 @@
             container: document.getElementById('pane-container2'),
             title: 'node属性'
         });        
-        pane2.addInput(curNode, 'position').on('change', ({ value }) => {
+        pane2.addInput(curNode, 'position', { label: '位置' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.x = value.x;
                 curNode.ref.data.y = value.y;
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'color').on('change', ({ value }) => {
+        pane2.addInput(curNode, 'color', { label: '颜色' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.color = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'size', { min: 10, max: 30 }).on('change', ({ value }) => {
+        pane2.addInput(curNode, 'size', { min: 10, max: 30, label: '大小' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.size = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'label').on('change', ({ value }) => {
+        pane2.addInput(curNode, 'label', { label: '文字' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.label = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30, step: 1 }).on('change', ({ value }) => {
+        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelSize = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane2.addInput(curNode, 'labelColor').on('change', ({ value }) => {
+        pane2.addInput(curNode, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelColor = value;
                 graph.renderer.render(graph.model);
@@ -231,25 +231,25 @@
             container: document.getElementById('pane-container3'),
             title: 'edge属性'
         });    
-        pane3.addInput(curEdge, 'label').on('change', ({ value }) => {
+        pane3.addInput(curEdge, 'label', { label: '文字' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.label = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane3.addInput(curEdge, 'labelSize', { min: 10, max: 30, step: 1 }).on('change', ({ value }) => {
+        pane3.addInput(curEdge, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.labelSize = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane3.addInput(curEdge, 'labelColor').on('change', ({ value }) => {
+        pane3.addInput(curEdge, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.labelColor = value;
                 graph.renderer.render(graph.model);
             }
         });
-        pane3.addInput(curEdge, 'color').on('change', ({ value }) => {
+        pane3.addInput(curEdge, 'color', { label: '边颜色' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.color = value;
                 graph.renderer.render(graph.model);
