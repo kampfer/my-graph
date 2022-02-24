@@ -50167,7 +50167,7 @@ var D3Node = {
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
-            .attr('fill', datum.color)
+            .attr('fill', datum.selected ? datum.activeColor : datum.color)
             .attr('r', size);
 
         selection.select('text')
@@ -50593,13 +50593,13 @@ var D3Edge = {
             .attr('display', datum.hideLabel === true ? 'none' : 'unset');
 
         selection.select('marker')
-            .attr('fill', datum.color);
+            .attr('fill', datum.selected ? datum.activeColor : datum.color);
 
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '');
 
         const pathSelection = selection.select('path.edge');
-        pathSelection.attr('stroke', datum.color);
+        pathSelection.attr('stroke', datum.selected ? datum.activeColor : datum.color);
         if (datum.target.x < datum.source.x) {  // 反
             pathSelection.attr('marker-start', `url(#arrow-${datum.id})`);
             pathSelection.attr('marker-end', 'none');
@@ -50627,15 +50627,6 @@ class ClickSelectControl extends eventemitter3 {
                 child.data.selected = hit;
                 if (hit) {
                     hitElem = child;
-                    child.data.color = '#99f';
-                    if (child.type === 'node') {
-                        child.data.size = 20;
-                    } else if (child.type === 'edge') ;
-                } else {
-                    child.data.color = '#000';
-                    if (child.type === 'node') {
-                        child.data.size = 15;
-                    }
                 }
             });
 
@@ -50654,12 +50645,6 @@ class ClickSelectControl extends eventemitter3 {
         graph.renderer.rootSelection.on('click', (e) => {
             graph.model.traverse(child => {
                 child.data.selected = false;
-                if (child.type === 'node') {
-                    child.data.color = '#000';
-                    child.data.size = 15;
-                } else {
-                    child.data.color = '#000';
-                }
             });
             graph.renderer.render(graph.model);
             graph.model.emit('clearSelect', { type: 'clearSelect' });

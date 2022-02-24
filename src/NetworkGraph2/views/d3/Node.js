@@ -19,7 +19,7 @@ export default {
             .attr('transform', `translate(${x}, ${y})`);
 
         selection.select('circle')
-            .attr('fill', datum.color)
+            .attr('fill', datum.selected ? datum.activeColor : datum.color)
             .attr('r', size);
 
         selection.select('text')

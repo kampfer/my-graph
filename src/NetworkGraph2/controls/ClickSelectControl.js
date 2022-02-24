@@ -14,17 +14,6 @@ export default class ClickSelectControl extends EventEmitter {
                 child.data.selected = hit;
                 if (hit) {
                     hitElem = child;
-                    child.data.color = '#99f';
-                    if (child.type === 'node') {
-                        child.data.size = 20;
-                    } else if (child.type === 'edge') {
-                        //
-                    }
-                } else {
-                    child.data.color = '#000';
-                    if (child.type === 'node') {
-                        child.data.size = 15;
-                    }
                 }
             })
 
@@ -43,12 +32,6 @@ export default class ClickSelectControl extends EventEmitter {
         graph.renderer.rootSelection.on('click', (e) => {
             graph.model.traverse(child => {
                 child.data.selected = false;
-                if (child.type === 'node') {
-                    child.data.color = '#000';
-                    child.data.size = 15;
-                } else {
-                    child.data.color = '#000';
-                }
             });
             graph.renderer.render(graph.model);
             graph.model.emit('clearSelect', { type: 'clearSelect' });

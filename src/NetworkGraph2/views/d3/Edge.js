@@ -176,13 +176,13 @@ export default {
             .attr('display', datum.hideLabel === true ? 'none' : 'unset');
 
         selection.select('marker')
-            .attr('fill', datum.color);
+            .attr('fill', datum.selected ? datum.activeColor : datum.color);
 
         const textPathSelection = selection.select('textPath');
         textPathSelection.text(datum.label ? datum.label : '')
 
         const pathSelection = selection.select('path.edge');
-        pathSelection.attr('stroke', datum.color);
+        pathSelection.attr('stroke', datum.selected ? datum.activeColor : datum.color);
         if (datum.target.x < datum.source.x) {  // 反
             pathSelection.attr('marker-start', `url(#arrow-${datum.id})`);
             pathSelection.attr('marker-end', 'none');
