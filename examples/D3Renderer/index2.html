@@ -24,9 +24,28 @@
             width: 250px;
             display: none;
         }
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+        .loader-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            background-color: rgba(255, 255, 255, 0.5);
+            top: 0;
+            left: 0;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <div class="loader-container">
+        <div class="loader" title="5">
+            布局中...
+        </div>
+    </div>
     <div id="graph"></div>
     <div id="pane-container"></div>
     <div id="pane-container2"></div>
@@ -117,52 +136,58 @@
     <script type="module">
         import { NetworkGraph } from '../../dist/graph.js';
 
+        const loaderContainer = document.querySelector('.loader-container');
+
         const pane2Container = document.getElementById('pane-container2');
         const pane3Container = document.getElementById('pane-container3');
         let graph;
         function renderRandom() {
-            if (graph) graph.destroy();
-            const data = makeData(settings.node, settings.edge);
-            graph = new NetworkGraph({
-                container: '#graph',
-                width: window.innerWidth,
-                height: window.innerHeight,
-                data
-            });
-            graph.model.on('selectNode', ({ target }) => {
-                pane2Container.style.display = 'unset';
-                pane3Container.style.display = 'none';
-                curNode.ref = target;
-            });
-            graph.model.on('selectEdge', ({ target }) => {
-                pane3Container.style.display = 'unset';
-                pane2Container.style.display = 'none';
-                curEdge.ref = target;
-            });
-            graph.model.on('clearSelect', () => {
-                curNode.ref = null;
-                curEdge.ref = null;
-                pane2Container.style.display = 'none';
-                pane3Container.style.display = 'none';
-            });
-            graph.model.on('updateNode', ({ target }) => {
-                if (curNode.ref && target.data.id === curNode.ref.data.id) {
-                    curNode.position.x = target.data.x;
-                    curNode.position.y = target.data.y;
-                    curNode.label = target.data.label;
-                    curNode.size = target.data.size;
-                    curNode.color = target.data.color;
-                    pane2.refresh();
-                }
-            });
-            graph.model.on('updateEdge', ({ target }) => {
-                if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
-                    curEdge.label = target.data.label;
-                    curEdge.labelColor = target.data.labelColor;
-                    curEdge.labelSize = target.data.labelSize;
-                    curEdge.color = target.data.color;
-                    pane3.refresh();
-                }
+            loaderContainer.style.display = 'block';
+            setTimeout(() => {
+                if (graph) graph.destroy();
+                const data = makeData(settings.node, settings.edge);
+                graph = new NetworkGraph({
+                    container: '#graph',
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    data
+                });
+                graph.model.on('selectNode', ({ target }) => {
+                    pane2Container.style.display = 'unset';
+                    pane3Container.style.display = 'none';
+                    curNode.ref = target;
+                });
+                graph.model.on('selectEdge', ({ target }) => {
+                    pane3Container.style.display = 'unset';
+                    pane2Container.style.display = 'none';
+                    curEdge.ref = target;
+                });
+                graph.model.on('clearSelect', () => {
+                    curNode.ref = null;
+                    curEdge.ref = null;
+                    pane2Container.style.display = 'none';
+                    pane3Container.style.display = 'none';
+                });
+                graph.model.on('updateNode', ({ target }) => {
+                    if (curNode.ref && target.data.id === curNode.ref.data.id) {
+                        curNode.position.x = target.data.x;
+                        curNode.position.y = target.data.y;
+                        curNode.label = target.data.label;
+                        curNode.size = target.data.size;
+                        curNode.color = target.data.color;
+                        pane2.refresh();
+                    }
+                });
+                graph.model.on('updateEdge', ({ target }) => {
+                    if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
+                        curEdge.label = target.data.label;
+                        curEdge.labelColor = target.data.labelColor;
+                        curEdge.labelSize = target.data.labelSize;
+                        curEdge.color = target.data.color;
+                        pane3.refresh();
+                    }
+                });
+                loaderContainer.style.display = 'none';
             });
         }
 
@@ -181,8 +206,12 @@
         folder2.addInput(settings, 'display node label', { label: '显示节点文字' }).on('change', ({ value }) => graph.toggleAllNodeLabels(value));
 
         pane.addButton({title: 'layout'}).on('click', () => {
-            graph.layout();
-            graph.render();
+            loaderContainer.style.display = 'block';
+            setTimeout(() => {
+                graph.layout();
+                graph.render();
+                loaderContainer.style.display = 'none';
+            });
         });
 
         const pane2 = new Tweakpane.Pane({
