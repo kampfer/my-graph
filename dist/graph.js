@@ -50025,10 +50025,10 @@ class Edge extends eventemitter3 {
 
 class Layout extends eventemitter3 {
 
-    constructor(graph) {
-        super();
-        this.graph = graph;
-    }
+    // constructor(graph) {
+    //     super();
+    //     this.graph = graph;
+    // }
 
     data() {}
 
@@ -50042,10 +50042,16 @@ class Layout extends eventemitter3 {
 
 class ForceLayout extends Layout {
 
-    constructor(...args) {
-        super(...args);
+    constructor({
+        linkDistance = 200,
+        manyBodyStrength = -500,
+        centerStrength = 0.05
+    }) {
+        super();
         
-        this.linkForce = link().id(d => d.id).distance(200);
+        this.linkForce = link().id(d => d.id).distance(linkDistance);
+        this.manyBodyForce = manyBody().strength(manyBodyStrength);
+        this.centerForce = center$1().strength(centerStrength);
 
         this.forceSimulation = simulation();
 
@@ -50053,9 +50059,10 @@ class ForceLayout extends Layout {
         this.forceSimulation.stop()
             // 配置排斥力，引力，连接力
             .force('edge', this.linkForce)
-            .force('change', manyBody().strength(-500))
-            .force('x', x$2().strength(0.05))
-            .force('y', y$2().strength(0.05));
+            .force('change', this.manyBodyForce)
+            .force('center', this.centerForce);
+            // .force('x', d3.forceX().strength(0.05))
+            // .force('y', d3.forceY().strength(0.05));
 
         this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
         this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
@@ -50659,7 +50666,8 @@ class NetworkGraph {
         container,
         width = 300,
         height = 150,
-        data
+        data,
+        layoutConfig
     }) {
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
@@ -50673,7 +50681,7 @@ class NetworkGraph {
             }
         }
 
-        this.placer = new ForceLayout();
+        this.placer = new ForceLayout(layoutConfig);
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);

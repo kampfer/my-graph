@@ -3,10 +3,16 @@ import * as d3 from 'd3';
 
 export default class ForceLayout extends Layout {
 
-    constructor(...args) {
-        super(...args);
+    constructor({
+        linkDistance = 200,
+        manyBodyStrength = -500,
+        centerStrength = 0.05
+    }) {
+        super();
         
-        this.linkForce = d3.forceLink().id(d => d.id).distance(200);
+        this.linkForce = d3.forceLink().id(d => d.id).distance(linkDistance);
+        this.manyBodyForce = d3.forceManyBody().strength(manyBodyStrength);
+        this.centerForce = d3.forceCenter().strength(centerStrength);
 
         this.forceSimulation = d3.forceSimulation();
 
@@ -14,9 +20,10 @@ export default class ForceLayout extends Layout {
         this.forceSimulation.stop()
             // 配置排斥力，引力，连接力
             .force('edge', this.linkForce)
-            .force('change', d3.forceManyBody().strength(-500))
-            .force('x', d3.forceX().strength(0.05))
-            .force('y', d3.forceY().strength(0.05));
+            .force('change', this.manyBodyForce)
+            .force('center', this.centerForce)
+            // .force('x', d3.forceX().strength(0.05))
+            // .force('y', d3.forceY().strength(0.05));
 
         this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
         this.forceSimulation.on('end', (...args) => this.emit('end', ...args));

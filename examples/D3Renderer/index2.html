@@ -113,6 +113,8 @@
             'display edge arrow': true,
             'display edge label': true,
             'display node label': true,
+            linkDistance: 300,
+            manyBodyStrength: -500,
         };
 
         const curNode = {
@@ -150,7 +152,10 @@
                     container: '#graph',
                     width: window.innerWidth,
                     height: window.innerHeight,
-                    data
+                    data,
+                    layoutConfig: {
+                        linkDistance: settings.linkDistance
+                    }
                 });
                 graph.model.on('selectNode', ({ target }) => {
                     pane2Container.style.display = 'unset';
@@ -191,6 +196,15 @@
             });
         }
 
+        function rerender() {
+            loaderContainer.style.display = 'block';
+            setTimeout(() => {
+                graph.layout();
+                graph.render();
+                loaderContainer.style.display = 'none';
+            });
+        }
+
         const pane = new Tweakpane.Pane({
             container: document.getElementById('pane-container'),
             title: '调试'
@@ -205,14 +219,18 @@
         folder2.addInput(settings, 'display edge label', { label: '显示边文字' }).on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
         folder2.addInput(settings, 'display node label', { label: '显示节点文字' }).on('change', ({ value }) => graph.toggleAllNodeLabels(value));
 
-        pane.addButton({title: 'layout'}).on('click', () => {
-            loaderContainer.style.display = 'block';
-            setTimeout(() => {
-                graph.layout();
-                graph.render();
-                loaderContainer.style.display = 'none';
-            });
-        });
+        const folder3 = pane.addFolder({ title: '布局' });
+        folder3.addInput(settings, 'linkDistance', { max: 1000, min: 1, step: 1, label: '链接距离' })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.linkForce.distance(value);
+                rerender();
+            }, 500));
+        folder3.addInput(settings, 'manyBodyStrength', { max: 0, min: -3000, step: 1, label: 'manyBody强度' })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.manyBodyForce.strength(value);
+                rerender();
+            }, 500));
+        folder3.addButton({title: 'layout'}).on('click', rerender);
 
         const pane2 = new Tweakpane.Pane({
             container: document.getElementById('pane-container2'),

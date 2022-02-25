@@ -15,7 +15,8 @@ export default class NetworkGraph {
         container,
         width = 300,
         height = 150,
-        data
+        data,
+        layoutConfig
     }) {
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
@@ -29,7 +30,7 @@ export default class NetworkGraph {
             }
         }
 
-        this.placer = new ForceLayout();
+        this.placer = new ForceLayout(layoutConfig);
         this.dragControl = new DragControl(this);
         this.zoomControl = new ZoomControl(this);
         this.clickSelectControl = new ClickSelectControl(this);
