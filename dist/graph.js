@@ -50045,13 +50045,16 @@ class ForceLayout extends Layout {
     constructor({
         linkDistance = 200,
         manyBodyStrength = -500,
-        centerStrength = 0.05
+        manyBodyTheta = 0.9,
+        xStrength = 0.05,
+        yStrength = 0.05,
     }) {
         super();
         
         this.linkForce = link().id(d => d.id).distance(linkDistance);
-        this.manyBodyForce = manyBody().strength(manyBodyStrength);
-        this.centerForce = center$1().strength(centerStrength);
+        this.manyBodyForce = manyBody().strength(manyBodyStrength).theta(manyBodyTheta);
+        this.xForce = x$2(0).strength(xStrength);
+        this.yForce = y$2(0).strength(yStrength);
 
         this.forceSimulation = simulation();
 
@@ -50060,9 +50063,8 @@ class ForceLayout extends Layout {
             // 配置排斥力，引力，连接力
             .force('edge', this.linkForce)
             .force('change', this.manyBodyForce)
-            .force('center', this.centerForce);
-            // .force('x', d3.forceX().strength(0.05))
-            // .force('y', d3.forceY().strength(0.05));
+            .force('x', this.xForce)
+            .force('y', this.yForce);
 
         this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
         this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
