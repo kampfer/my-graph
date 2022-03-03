@@ -50326,7 +50326,7 @@ class QuadraticBezierCurve {
             const t = cur / (size - 1);
             lut.push({
                 x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
-                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                y: QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
                 t
             });
             cur++;
@@ -50752,4 +50752,18 @@ class NetworkGraph {
 
 }
 
-export { D3Edge, D3Node, D3Renderer, DragControl, Edge, ForceLayout, Graph, NetworkGraph, Node$2 as Node, ReactRenderer, ZoomControl, index$5 as d3 };
+const utils = {
+    intersectLineAndCircle,
+    intersectSegmentAndCircle
+};
+
+var index$6 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  utils: utils,
+  Line: Line,
+  Circle: Line$1,
+  Vector2: Vector2,
+  QuadraticBezierCurve: QuadraticBezierCurve
+});
+
+export { D3Edge, D3Node, D3Renderer, DragControl, Edge, ForceLayout, Graph, NetworkGraph, Node$2 as Node, ReactRenderer, ZoomControl, index$5 as d3, index$6 as math };
