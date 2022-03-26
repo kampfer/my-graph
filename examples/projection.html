@@ -70,6 +70,7 @@
             lines[0].p2.set(lut[start].x, lut[start].y);
         }
 
+        // https://pomax.github.io/bezierinfo/#projections
         function lookupProjection(sgements, point, iterCount) {
             let distance = Infinity;
             let index;
@@ -87,7 +88,7 @@
 
             iterCount++;
 
-            if (Math.abs(sgements[start].x - sgements[end].x) < 0.1 || iterCount > 25) {
+            if (Math.abs(sgements[start].x - sgements[end].x) < 1 || iterCount > 25) {
                 console.log(iterCount);
                 return sgements[index];
             } else {
