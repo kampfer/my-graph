@@ -19569,6 +19569,199 @@ var index$5 = /*#__PURE__*/Object.freeze({
   zoomIdentity: identity$9
 });
 
+// https://github.com/mrdoob/three.js/blob/master/src/math/Vector2.js
+
+class Vector2 {
+
+    static fromAddVectors(v1, v2) {
+        return new Vector2(v1.x + v2.x, v1.y + v2.y);
+    }
+
+    static fromSubVectors(v1, v2) {
+        return new Vector2(v1.x - v2.x, v1.y - v2.y); 
+    }
+
+    static fromArray(arr) {
+        return new Vector2(arr[0], arr[1]);
+    }
+
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+
+    set(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    add(v) {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+    }
+
+    sub(v) {
+        this.x -= v.x;
+        this.y -= v.y;
+        return this;
+    }
+
+    multiply() {}
+
+    divide() {}
+
+    addScalar(v) {
+        this.x += v;
+        this.y += v;
+        return this;
+    }
+
+    subScalar(v) {
+        this.x -= v;
+        this.y -= v;
+        return this;
+    }
+
+    multiplyScalar(scalar) {
+        this.x *= scalar;
+        this.y *= scalar;
+        return this;
+    }
+
+    divideScalar(scalar) {
+        return this.multiplyScalar(1 / scalar);
+    }
+
+    dot(v) {
+        return this.x * v.x + this.y * v.y;
+    }
+
+    cross(v) {
+        return this.x * v.y - this.y * v.x;
+    }
+
+    length() {
+        return Math.sqrt(this.lengthSq());
+    }
+
+    lengthSq() {
+        return this.x * this.x + this.y * this.y;
+    }
+
+    clone() {
+        return new this.constructor(this.x, this.y);
+    }
+
+    // angle > 0 顺时针
+    // angle < 0 逆时针
+    rotateAround(center, angle) {
+        const s = Math.sin(angle),
+              c = Math.cos(angle),
+              x = this.x - center.x,
+              y = this.y - center.y;
+        this.x = c * x - s * y + center.x;
+        this.y = s * x + c * y + center.y;
+        return this;
+    }
+
+}
+
+class Line {
+    
+    constructor(center, r) {
+        this.center = center;
+        this.r = r;
+    }
+
+}
+
+class Line$1 {
+    
+    constructor(p1, p2) {
+        this.p1 = p1;
+        this.p2 = p2;
+    }
+
+    maxX() {
+        return Math.max(this.p1.x, this.p2.x);
+    }
+
+    minX() {
+        return Math.min(this.p1.x, this.p2.x);
+    }
+
+    maxY() {
+        return Math.max(this.p1.y, this.p2.y);
+    }
+
+    minY() {
+        return Math.min(this.p1.y, this.p2.y);
+    }
+
+}
+
+// https://github.com/mrdoob/three.js/blob/master/src/extras/curves/QuadraticBezierCurve.js
+
+class QuadraticBezierCurve {
+
+    constructor(v0, v1, v2) {
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+
+    getPoint(t, target = new Vector2()) {
+        target.set(
+            QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+            QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
+        );
+        return target;
+    }
+
+    getDerivative(t) {
+        const v0 = this.v0;
+        const v1 = this.v1;
+        const v2 = this.v2;
+        const t1 = 1 - t;
+        return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
+    }
+
+    getLUT(size) {
+        const lut = [];
+
+        if (size < 2) return lut;
+
+        let cur = 0;
+        while(cur < size) {
+            const t = cur / (size - 1);
+            lut.push({
+                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
+                y: QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
+                t
+            });
+            cur++;
+        }
+
+        return lut;
+    }
+
+    static interpolate(t, p0, p1, p2) {
+        const t1 = 1 - t;
+        return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
+    }
+
+}
+
+var index$6 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  Vector2: Vector2,
+  Circle: Line,
+  Line: Line$1,
+  QuadraticBezierCurve: QuadraticBezierCurve
+});
+
 function createCommonjsModule(fn) {
   var module = { exports: {} };
 	return fn(module, module.exports), module.exports;
@@ -50191,191 +50384,6 @@ var D3Node = {
     }
 };
 
-// https://github.com/mrdoob/three.js/blob/master/src/math/Vector2.js
-
-class Vector2 {
-
-    static fromAddVectors(v1, v2) {
-        return new Vector2(v1.x + v2.x, v1.y + v2.y);
-    }
-
-    static fromSubVectors(v1, v2) {
-        return new Vector2(v1.x - v2.x, v1.y - v2.y); 
-    }
-
-    static fromArray(arr) {
-        return new Vector2(arr[0], arr[1]);
-    }
-
-    constructor(x = 0, y = 0) {
-        this.x = x;
-        this.y = y;
-    }
-
-    set(x, y) {
-        this.x = x;
-        this.y = y;
-        return this;
-    }
-
-    add(v) {
-        this.x += v.x;
-        this.y += v.y;
-        return this;
-    }
-
-    sub(v) {
-        this.x -= v.x;
-        this.y -= v.y;
-        return this;
-    }
-
-    multiply() {}
-
-    divide() {}
-
-    addScalar(v) {
-        this.x += v;
-        this.y += v;
-        return this;
-    }
-
-    subScalar(v) {
-        this.x -= v;
-        this.y -= v;
-        return this;
-    }
-
-    multiplyScalar(scalar) {
-        this.x *= scalar;
-        this.y *= scalar;
-        return this;
-    }
-
-    divideScalar(scalar) {
-        return this.multiplyScalar(1 / scalar);
-    }
-
-    dot(v) {
-        return this.x * v.x + this.y * v.y;
-    }
-
-    cross(v) {
-        return this.x * v.y - this.y * v.x;
-    }
-
-    length() {
-        return Math.sqrt(this.lengthSq());
-    }
-
-    lengthSq() {
-        return this.x * this.x + this.y * this.y;
-    }
-
-    clone() {
-        return new this.constructor(this.x, this.y);
-    }
-
-    // angle > 0 顺时针
-    // angle < 0 逆时针
-    rotateAround(center, angle) {
-        const s = Math.sin(angle),
-              c = Math.cos(angle),
-              x = this.x - center.x,
-              y = this.y - center.y;
-        this.x = c * x - s * y + center.x;
-        this.y = s * x + c * y + center.y;
-        return this;
-    }
-
-}
-
-// https://github.com/mrdoob/three.js/blob/master/src/extras/curves/QuadraticBezierCurve.js
-
-class QuadraticBezierCurve {
-
-    constructor(v0, v1, v2) {
-        this.v0 = v0;
-        this.v1 = v1;
-        this.v2 = v2;
-    }
-
-    getPoint(t, target = new Vector2()) {
-        target.set(
-            QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
-            QuadraticBezierCurve.interpolate(t, this.v0.y, this.v1.y, this.v2.y),
-        );
-        return target;
-    }
-
-    getDerivative(t) {
-        const v0 = this.v0;
-        const v1 = this.v1;
-        const v2 = this.v2;
-        const t1 = 1 - t;
-        return ( t1 * (v1.y - v0.y) + t * (v2.y - v1.y)) / ( t1 * (v1.x - v0.x) + t * (v2.x - v1.x));
-    }
-
-    getLUT(size) {
-        const lut = [];
-
-        if (size < 2) return lut;
-
-        let cur = 0;
-        while(cur < size) {
-            const t = cur / (size - 1);
-            lut.push({
-                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
-                x: QuadraticBezierCurve.interpolate(t, this.v0.x, this.v1.x, this.v2.x),
-                t
-            });
-            cur++;
-        }
-
-        return lut;
-    }
-
-    static interpolate(t, p0, p1, p2) {
-        const t1 = 1 - t;
-        return t1 * t1 * p0 + 2 * t1 * t * p1 + t * t * p2;
-    }
-
-}
-
-class Line {
-    
-    constructor(p1, p2) {
-        this.p1 = p1;
-        this.p2 = p2;
-    }
-
-    maxX() {
-        return Math.max(this.p1.x, this.p2.x);
-    }
-
-    minX() {
-        return Math.min(this.p1.x, this.p2.x);
-    }
-
-    maxY() {
-        return Math.max(this.p1.y, this.p2.y);
-    }
-
-    minY() {
-        return Math.min(this.p1.y, this.p2.y);
-    }
-
-}
-
-class Line$1 {
-    
-    constructor(center, r) {
-        this.center = center;
-        this.r = r;
-    }
-
-}
-
 function sgn(x) {
     if (x < 0) return -1;
     return 1;
@@ -50478,8 +50486,8 @@ function getNewBezierPoint(start, c1, end, r, target) {
     const curve = new QuadraticBezierCurve(start, c1, end);
 
     function iter(p) {
-        const line = new Line(c1, p);
-        const circle = new Line$1(target, r);
+        const line = new Line$1(c1, p);
+        const circle = new Line(target, r);
         const j1 = intersectSegmentAndCircle(line, circle);
         const pj1 = project(j1, start, end);
         const k = pj1.clone().sub(start).length() / start.clone().sub(end).length();
@@ -50536,9 +50544,9 @@ function linkArc(d) {
     } else {
 
         if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {  // 直线
-            const line = new Line(source, target);
-            const sourceCircle = new Line$1(source, sourceSize);
-            const targetCircle = new Line$1(target, targetSize);
+            const line = new Line$1(source, target);
+            const sourceCircle = new Line(source, sourceSize);
+            const targetCircle = new Line(target, targetSize);
             const p1 = intersectSegmentAndCircle(line, sourceCircle);
             const p2 = intersectSegmentAndCircle(line, targetCircle);
             if (p1 && p2) {
@@ -50752,4 +50760,4 @@ class NetworkGraph {
 
 }
 
-export { D3Edge, D3Node, D3Renderer, DragControl, Edge, ForceLayout, Graph, NetworkGraph, Node$2 as Node, ReactRenderer, ZoomControl, index$5 as d3 };
+export { D3Edge, D3Node, D3Renderer, DragControl, Edge, ForceLayout, Graph, NetworkGraph, Node$2 as Node, ReactRenderer, ZoomControl, index$5 as d3, index$6 as math };

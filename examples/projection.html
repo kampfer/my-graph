@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+        }
+        svg {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import { d3, math } from '../../dist/graph.js';
+        const { QuadraticBezierCurve, Vector2, Line } = math;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const svg = d3.create('svg').attr('viewBox', [-width / 2, -height/2, width, height]);
+        document.body.appendChild(svg.node());
+
+        const points = [
+            new Vector2(-300, -200),
+            new Vector2(300, 0),
+            new Vector2(230, 300),
+        ];
+
+        const curve = new QuadraticBezierCurve(...points);
+
+        const d3Drag = d3.drag().on('drag', (e, d) => {
+            d.x = e.x;
+            d.y = e.y;
+            render();
+        });
+
+        const pointer = new Vector2();
+        svg.on('mousemove', e => {
+            pointer.x = e.x - width / 2;
+            pointer.y = e.y - height / 2;
+            render();
+        });
+
+        const lines = [
+            new Line(pointer, new Vector2()),
+            new Line(pointer, new Vector2()),
+            new Line(pointer, new Vector2()),
+        ];
+
+        function findClosest(lut, point) {
+            let distance = Infinity;
+            let index;
+            for(let i = 0, l = lut.length; i < l; i++) {
+                let d = Vector2.fromSubVectors(point, lut[i]).length();
+                if (d < distance) {
+                    distance = d;
+                    index = i;
+                }
+            }
+
+            let start = index - 1, end = index + 1;
+            if (start < 0) start = 0;
+            if (end > lut.length - 1) end = lut.length - 1;
+            lines[2].p2.set(lut[end].x, lut[end].y);
+            lines[1].p2.set(lut[index].x, lut[index].y);
+            lines[0].p2.set(lut[start].x, lut[start].y);
+        }
+
+        function lookupProjection(sgements, point, iterCount) {
+            let distance = Infinity;
+            let index;
+            for(let i = 0, l = sgements.length; i < l; i++) {
+                let d = Vector2.fromSubVectors(point, sgements[i]).length();
+                if (d < distance) {
+                    distance = d;
+                    index = i;
+                }
+            }
+
+            let start = index - 1, end = index + 1;
+            if (start < 0) start = 0;
+            if (end > sgements.length - 1) end = sgements.length - 1;
+
+            iterCount++;
+
+            if (Math.abs(sgements[start].x - sgements[end].x) < 0.1 || iterCount > 25) {
+                console.log(iterCount);
+                return sgements[index];
+            } else {
+                const t1 = (sgements[start].t + sgements[index].t) / 2;
+                const t2 = (sgements[index].t + sgements[end].t) / 2;
+                return lookupProjection(
+                    [
+                        sgements[start],
+                        { t: t1, ...curve.getPoint(t1) },
+                        sgements[index],
+                        { t: t2, ...curve.getPoint(t2) },
+                        sgements[end]
+                    ],
+                    point,
+                    iterCount
+                );
+            }
+
+        }
+
+        function render() {
+
+            svg.selectAll('path.curve')
+                .data([curve])
+                .join(
+                    enter => enter.append('path').classed('curve', true).attr('fill', 'none').attr('stroke', '#000')
+                )
+                .attr('d', `M ${curve.v0.x} ${curve.v0.y} Q ${curve.v1.x} ${curve.v1.y} ${curve.v2.x} ${curve.v2.y}`);
+
+            const lut = curve.getLUT(20);
+            findClosest(lut, pointer);
+
+            const projection = lookupProjection(lut, pointer, 0);
+
+            svg.selectAll('circle.point')
+                .data([...points, projection])
+                .join(
+                    enter => enter
+                        .append('circle')
+                        .classed('point', true)
+                        .attr('r', 4)
+                        .attr('fill', '#000')
+                        .call(d3Drag)
+                )
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            svg.selectAll('path.line')
+                .data(lines)
+                .join(
+                    enter => enter.append('path').classed('line', true).attr('fill', 'none').attr('stroke', '#000')
+                )
+                .attr('d', d => {
+                    return `M ${d.p1.x} ${d.p1.y} L ${d.p2.x} ${d.p2.y}`;
+                });
+
+        }
+
+        render();
+    </script>
+</body>
+</html>
