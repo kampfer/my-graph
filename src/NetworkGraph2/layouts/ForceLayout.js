@@ -9,7 +9,7 @@ export default class ForceLayout extends Layout {
         manyBodyTheta = 0.9,
         xStrength = 0.05,
         yStrength = 0.05,
-    }) {
+    } = {}) {
         super();
         
         this.linkForce = d3.forceLink().id(d => d.id).distance(linkDistance);

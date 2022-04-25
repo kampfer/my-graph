@@ -2959,7 +2959,7 @@ class ForceLayout extends Layout {
         manyBodyTheta = 0.9,
         xStrength = 0.05,
         yStrength = 0.05,
-    }) {
+    } = {}) {
         super();
         
         this.linkForce = link().id(d => d.id).distance(linkDistance);
