@@ -252,88 +252,348 @@ var index = /*#__PURE__*/Object.freeze({
     QuadraticBezierCurve: QuadraticBezierCurve
 });
 
-var noop = {value: () => {}};
+function createCommonjsModule(fn) {
+  var module = { exports: {} };
+	return fn(module, module.exports), module.exports;
+}
 
-function dispatch() {
-  for (var i = 0, n = arguments.length, _ = {}, t; i < n; ++i) {
-    if (!(t = arguments[i] + "") || (t in _) || /[\s.]/.test(t)) throw new Error("illegal type: " + t);
-    _[t] = [];
+var eventemitter3 = createCommonjsModule(function (module) {
+
+var has = Object.prototype.hasOwnProperty
+  , prefix = '~';
+
+/**
+ * Constructor to create a storage for our `EE` objects.
+ * An `Events` instance is a plain object whose properties are event names.
+ *
+ * @constructor
+ * @private
+ */
+function Events() {}
+
+//
+// We try to not inherit from `Object.prototype`. In some engines creating an
+// instance in this way is faster than calling `Object.create(null)` directly.
+// If `Object.create(null)` is not supported we prefix the event names with a
+// character to make sure that the built-in object properties are not
+// overridden or used as an attack vector.
+//
+if (Object.create) {
+  Events.prototype = Object.create(null);
+
+  //
+  // This hack is needed because the `__proto__` property is still inherited in
+  // some old browsers like Android 4, iPhone 5.1, Opera 11 and Safari 5.
+  //
+  if (!new Events().__proto__) prefix = false;
+}
+
+/**
+ * Representation of a single event listener.
+ *
+ * @param {Function} fn The listener function.
+ * @param {*} context The context to invoke the listener with.
+ * @param {Boolean} [once=false] Specify if the listener is a one-time listener.
+ * @constructor
+ * @private
+ */
+function EE(fn, context, once) {
+  this.fn = fn;
+  this.context = context;
+  this.once = once || false;
+}
+
+/**
+ * Add a listener for a given event.
+ *
+ * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+ * @param {(String|Symbol)} event The event name.
+ * @param {Function} fn The listener function.
+ * @param {*} context The context to invoke the listener with.
+ * @param {Boolean} once Specify if the listener is a one-time listener.
+ * @returns {EventEmitter}
+ * @private
+ */
+function addListener(emitter, event, fn, context, once) {
+  if (typeof fn !== 'function') {
+    throw new TypeError('The listener must be a function');
   }
-  return new Dispatch(_);
+
+  var listener = new EE(fn, context || emitter, once)
+    , evt = prefix ? prefix + event : event;
+
+  if (!emitter._events[evt]) emitter._events[evt] = listener, emitter._eventsCount++;
+  else if (!emitter._events[evt].fn) emitter._events[evt].push(listener);
+  else emitter._events[evt] = [emitter._events[evt], listener];
+
+  return emitter;
 }
 
-function Dispatch(_) {
-  this._ = _;
+/**
+ * Clear event by name.
+ *
+ * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+ * @param {(String|Symbol)} evt The Event name.
+ * @private
+ */
+function clearEvent(emitter, evt) {
+  if (--emitter._eventsCount === 0) emitter._events = new Events();
+  else delete emitter._events[evt];
 }
 
-function parseTypenames(typenames, types) {
-  return typenames.trim().split(/^|\s+/).map(function(t) {
-    var name = "", i = t.indexOf(".");
-    if (i >= 0) name = t.slice(i + 1), t = t.slice(0, i);
-    if (t && !types.hasOwnProperty(t)) throw new Error("unknown type: " + t);
-    return {type: t, name: name};
-  });
+/**
+ * Minimal `EventEmitter` interface that is molded against the Node.js
+ * `EventEmitter` interface.
+ *
+ * @constructor
+ * @public
+ */
+function EventEmitter() {
+  this._events = new Events();
+  this._eventsCount = 0;
 }
 
-Dispatch.prototype = dispatch.prototype = {
-  constructor: Dispatch,
-  on: function(typename, callback) {
-    var _ = this._,
-        T = parseTypenames(typename + "", _),
-        t,
-        i = -1,
-        n = T.length;
+/**
+ * Return an array listing the events for which the emitter has registered
+ * listeners.
+ *
+ * @returns {Array}
+ * @public
+ */
+EventEmitter.prototype.eventNames = function eventNames() {
+  var names = []
+    , events
+    , name;
 
-    // If no callback was specified, return the callback of the given type and name.
-    if (arguments.length < 2) {
-      while (++i < n) if ((t = (typename = T[i]).type) && (t = get(_[t], typename.name))) return t;
-      return;
-    }
+  if (this._eventsCount === 0) return names;
 
-    // If a type was specified, set the callback for the given type and name.
-    // Otherwise, if a null callback was specified, remove callbacks of the given name.
-    if (callback != null && typeof callback !== "function") throw new Error("invalid callback: " + callback);
-    while (++i < n) {
-      if (t = (typename = T[i]).type) _[t] = set(_[t], typename.name, callback);
-      else if (callback == null) for (t in _) _[t] = set(_[t], typename.name, null);
-    }
-
-    return this;
-  },
-  copy: function() {
-    var copy = {}, _ = this._;
-    for (var t in _) copy[t] = _[t].slice();
-    return new Dispatch(copy);
-  },
-  call: function(type, that) {
-    if ((n = arguments.length - 2) > 0) for (var args = new Array(n), i = 0, n, t; i < n; ++i) args[i] = arguments[i + 2];
-    if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
-    for (t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
-  },
-  apply: function(type, that, args) {
-    if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
-    for (var t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
+  for (name in (events = this._events)) {
+    if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
   }
+
+  if (Object.getOwnPropertySymbols) {
+    return names.concat(Object.getOwnPropertySymbols(events));
+  }
+
+  return names;
 };
 
-function get(type, name) {
-  for (var i = 0, n = type.length, c; i < n; ++i) {
-    if ((c = type[i]).name === name) {
-      return c.value;
-    }
-  }
-}
+/**
+ * Return the listeners registered for a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @returns {Array} The registered listeners.
+ * @public
+ */
+EventEmitter.prototype.listeners = function listeners(event) {
+  var evt = prefix ? prefix + event : event
+    , handlers = this._events[evt];
 
-function set(type, name, callback) {
-  for (var i = 0, n = type.length; i < n; ++i) {
-    if (type[i].name === name) {
-      type[i] = noop, type = type.slice(0, i).concat(type.slice(i + 1));
-      break;
+  if (!handlers) return [];
+  if (handlers.fn) return [handlers.fn];
+
+  for (var i = 0, l = handlers.length, ee = new Array(l); i < l; i++) {
+    ee[i] = handlers[i].fn;
+  }
+
+  return ee;
+};
+
+/**
+ * Return the number of listeners listening to a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @returns {Number} The number of listeners.
+ * @public
+ */
+EventEmitter.prototype.listenerCount = function listenerCount(event) {
+  var evt = prefix ? prefix + event : event
+    , listeners = this._events[evt];
+
+  if (!listeners) return 0;
+  if (listeners.fn) return 1;
+  return listeners.length;
+};
+
+/**
+ * Calls each of the listeners registered for a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @returns {Boolean} `true` if the event had listeners, else `false`.
+ * @public
+ */
+EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
+  var evt = prefix ? prefix + event : event;
+
+  if (!this._events[evt]) return false;
+
+  var listeners = this._events[evt]
+    , len = arguments.length
+    , args
+    , i;
+
+  if (listeners.fn) {
+    if (listeners.once) this.removeListener(event, listeners.fn, undefined, true);
+
+    switch (len) {
+      case 1: return listeners.fn.call(listeners.context), true;
+      case 2: return listeners.fn.call(listeners.context, a1), true;
+      case 3: return listeners.fn.call(listeners.context, a1, a2), true;
+      case 4: return listeners.fn.call(listeners.context, a1, a2, a3), true;
+      case 5: return listeners.fn.call(listeners.context, a1, a2, a3, a4), true;
+      case 6: return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
+    }
+
+    for (i = 1, args = new Array(len -1); i < len; i++) {
+      args[i - 1] = arguments[i];
+    }
+
+    listeners.fn.apply(listeners.context, args);
+  } else {
+    var length = listeners.length
+      , j;
+
+    for (i = 0; i < length; i++) {
+      if (listeners[i].once) this.removeListener(event, listeners[i].fn, undefined, true);
+
+      switch (len) {
+        case 1: listeners[i].fn.call(listeners[i].context); break;
+        case 2: listeners[i].fn.call(listeners[i].context, a1); break;
+        case 3: listeners[i].fn.call(listeners[i].context, a1, a2); break;
+        case 4: listeners[i].fn.call(listeners[i].context, a1, a2, a3); break;
+        default:
+          if (!args) for (j = 1, args = new Array(len -1); j < len; j++) {
+            args[j - 1] = arguments[j];
+          }
+
+          listeners[i].fn.apply(listeners[i].context, args);
+      }
     }
   }
-  if (callback != null) type.push({name: name, value: callback});
-  return type;
+
+  return true;
+};
+
+/**
+ * Add a listener for a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @param {Function} fn The listener function.
+ * @param {*} [context=this] The context to invoke the listener with.
+ * @returns {EventEmitter} `this`.
+ * @public
+ */
+EventEmitter.prototype.on = function on(event, fn, context) {
+  return addListener(this, event, fn, context, false);
+};
+
+/**
+ * Add a one-time listener for a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @param {Function} fn The listener function.
+ * @param {*} [context=this] The context to invoke the listener with.
+ * @returns {EventEmitter} `this`.
+ * @public
+ */
+EventEmitter.prototype.once = function once(event, fn, context) {
+  return addListener(this, event, fn, context, true);
+};
+
+/**
+ * Remove the listeners of a given event.
+ *
+ * @param {(String|Symbol)} event The event name.
+ * @param {Function} fn Only remove the listeners that match this function.
+ * @param {*} context Only remove the listeners that have this context.
+ * @param {Boolean} once Only remove one-time listeners.
+ * @returns {EventEmitter} `this`.
+ * @public
+ */
+EventEmitter.prototype.removeListener = function removeListener(event, fn, context, once) {
+  var evt = prefix ? prefix + event : event;
+
+  if (!this._events[evt]) return this;
+  if (!fn) {
+    clearEvent(this, evt);
+    return this;
+  }
+
+  var listeners = this._events[evt];
+
+  if (listeners.fn) {
+    if (
+      listeners.fn === fn &&
+      (!once || listeners.once) &&
+      (!context || listeners.context === context)
+    ) {
+      clearEvent(this, evt);
+    }
+  } else {
+    for (var i = 0, events = [], length = listeners.length; i < length; i++) {
+      if (
+        listeners[i].fn !== fn ||
+        (once && !listeners[i].once) ||
+        (context && listeners[i].context !== context)
+      ) {
+        events.push(listeners[i]);
+      }
+    }
+
+    //
+    // Reset the array, or remove it completely if we have no more listeners.
+    //
+    if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
+    else clearEvent(this, evt);
+  }
+
+  return this;
+};
+
+/**
+ * Remove all listeners, or those of the specified event.
+ *
+ * @param {(String|Symbol)} [event] The event name.
+ * @returns {EventEmitter} `this`.
+ * @public
+ */
+EventEmitter.prototype.removeAllListeners = function removeAllListeners(event) {
+  var evt;
+
+  if (event) {
+    evt = prefix ? prefix + event : event;
+    if (this._events[evt]) clearEvent(this, evt);
+  } else {
+    this._events = new Events();
+    this._eventsCount = 0;
+  }
+
+  return this;
+};
+
+//
+// Alias methods names because people roll like that.
+//
+EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+
+//
+// Expose the prefix.
+//
+EventEmitter.prefixed = prefix;
+
+//
+// Allow `EventEmitter` to be imported as module namespace.
+//
+EventEmitter.EventEmitter = EventEmitter;
+
+//
+// Expose the module.
+//
+{
+  module.exports = EventEmitter;
 }
+});
 
 var xhtml = "http://www.w3.org/1999/xhtml";
 
@@ -1073,7 +1333,7 @@ function contextListener(listener) {
   };
 }
 
-function parseTypenames$1(typenames) {
+function parseTypenames(typenames) {
   return typenames.trim().split(/^|\s+/).map(function(t) {
     var name = "", i = t.indexOf(".");
     if (i >= 0) name = t.slice(i + 1), t = t.slice(0, i);
@@ -1116,7 +1376,7 @@ function onAdd(typename, value, options) {
 }
 
 function selection_on(typename, value, options) {
-  var typenames = parseTypenames$1(typename + ""), i, n = typenames.length, t;
+  var typenames = parseTypenames(typename + ""), i, n = typenames.length, t;
 
   if (arguments.length < 2) {
     var on = this.node().__on;
@@ -1265,6 +1525,1491 @@ function pointer(event, node) {
   return [event.pageX, event.pageY];
 }
 
+class D3Renderer extends eventemitter3 {
+
+    constructor({
+        svg
+    } = {}) {
+        super();
+
+        if (svg && svg instanceof SVGElement) {
+            this.rootSelection = select(svg);
+        } else {
+            this.rootSelection = create('svg');
+        }
+
+        this.rootSelection
+            .classed('network-graph', true)
+            .attr('xmlns', 'http://www.w3.org/2000/svg')
+            .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+        this.rootSelection.append('defs');
+        this._gSelection = this.rootSelection
+            .append('g')
+            .classed('canvas', true);
+    }
+
+    setViewBox(x, y, width, height) {
+        this.rootSelection.attr('viewBox', [x, y, width, height]);
+    }
+
+    setSize(width, height) {
+        this.rootSelection
+            .attr('width', width)
+            .attr('height', height);
+    }
+
+    rootElement() {
+        return this.rootSelection.node();
+    }
+
+    render(graph) {
+
+        // console.log('graph render');
+
+        const nodes = graph.getNodes();
+        const edges = graph.getEdges();
+
+        this._gSelection
+            .selectAll('g.edge')
+            .data(edges, d => d.data.id)
+            .join(
+                enter => enter.append('g')
+                    .classed('edge', true)
+                    .each(function(edge) {
+                        // console.log('create edge');
+                        edge.view.create(edge.data, select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('createdEdge', enter);
+                    })
+            )
+            .each(function(edge) {
+                // console.log('update edge');
+                edge.view.update(edge.data, select(this));
+            });
+
+        this._gSelection
+            .selectAll('g.node')
+            .data(nodes, d => d.data.id)
+            .join(
+                enter => enter.append('g')
+                    .classed('node', true)
+                    .each(function(node) {
+                        // console.log('create node');
+                        node.view.create(node.data, select(this));
+                    })
+                    .call((enter) => {
+                        this.emit('createdNode', enter);
+                    })
+            )
+            .each(function(node) {
+                // console.log('update node');
+                node.view.update(node.data, select(this));
+            });
+
+    }
+
+}
+
+class Object$1 extends eventemitter3 {
+
+    constructor() {
+        super();
+        this._children = [];
+        this._parent = null;
+    }
+
+    addChild(child) {
+        if (child) {
+            this._children.push(child);
+            child._parent = this;
+        }
+    }
+
+    prependChild(child) {
+        if (child) {
+            this._children.unshift(child);
+            child._parent = this;
+        }
+    }
+
+    removeChild(child) {
+        const index = this._children.findIndex(child);
+        if (index > -1) {
+            const child = this._children[index];
+            child._parent = null;
+            this._children.splice(index, 1);
+        }
+    }
+
+    filterChild(callback) {
+        const children = [];
+        this.traverse(child => {
+            if (callback(child) === true) children.push(child);
+        });
+        return children;
+    }
+
+    traverse(callback) {
+        this._children.forEach(child => {
+            callback(child);
+            if (child.traverse) child.traverse(callback);
+        });
+    }
+
+    children() {
+        return this._children;
+    }
+
+    removeAllChildren() {
+        this._children = [];
+    }
+
+}
+
+function getId(object) {
+    return typeof object === 'string' ? object : object.id;
+}
+
+class Graph extends Object$1 {
+
+    type = 'graph'
+
+    constructor(...args) {
+        super(...args);
+
+        this.transportUpdateNodeEvent = (e) => this.emit('updateNode', { type: 'updatenode', target: e.node });
+        this.transportUpdateEdgeEvent = (e) => this.emit('updateEdge', { type: 'updateedge', target: e.edge });
+    }
+
+    addNode(node) {
+        super.addChild(node);
+        node.on('update', this.transportUpdateNodeEvent);
+    }
+
+    getNodeById(id) {
+        let node;
+        this.traverse((child) => {
+            if (node) return;
+            if (child.type === 'node' && child.data.id === id) node = child;
+        });
+        return node;
+    }
+
+    getNodes() {
+        return this.filterChild(d => d.type === 'node');
+    }
+
+    eachNode(callback) {
+        this.traverse(child => {
+            if (child.type === 'node') {
+                callback(child);
+            }
+        });
+    }
+
+    removeNode() {}
+
+    addEdges(edges) {
+        edges.forEach(edge => {
+            super.prependChild(edge);
+            edge.on('update', this.transportUpdateEdgeEvent);
+        });
+        this._updateEdges();
+    }
+
+    // 添加多条边的情况推荐使用addEdges。
+    // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
+    addEdge(edge) {
+        super.prependChild(edge);
+        edge.on('update', this.transportUpdateEdgeEvent);
+        this._updateEdges();
+    }
+
+    getEdgesBySourceAndTarget(sourceId, targetId) {
+        return this.filterChild(child =>
+            child.type === 'edge' &&
+            getId(child.data.source) === sourceId &&
+            getId(child.data.target) === targetId
+        );
+    }
+
+    getEdges() {
+        return this.filterChild(d => d.type === 'edge');
+    }
+
+    removeEdge() {}
+
+    eachEdge(callback) {
+        this.traverse(child => {
+            if (child.type === 'edge') {
+                callback(child);
+            }
+        });
+    }
+
+    _updateEdges() {
+        const edges = this.getEdges();
+        const edgeMap = {};
+
+        edges.forEach(edge => {
+            const edgeData = edge.data;
+            // 统计边信息
+            const sourceId = getId(edgeData.source);
+            const targetId = getId(edgeData.target);
+            const direction = `${sourceId}-${targetId}`;
+            const directionAlt = `${targetId}-${sourceId}`;
+            if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
+            if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
+            // sameIndex需要同时考虑同向和反向边
+            // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
+            if (direction === directionAlt) {
+                edgeData.sameIndex = ++edgeMap[direction];
+            } else {
+                edgeData.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
+            }
+        });
+
+        edges.forEach((edge, i) => {
+            const edgeData = edge.data;
+            const sourceId = getId(edgeData.source);
+            const targetId = getId(edgeData.target);
+            const same = edgeMap[`${sourceId}-${targetId}`];
+            const sameAlt = edgeMap[`${targetId}-${sourceId}`];
+
+            edgeData.sameTotal = same + sameAlt;
+            edgeData.sameTotalHalf = edgeData.sameTotal / 2;
+            edgeData.sameUneven = edgeData.sameTotal % 2 !== 0;
+            edgeData.sameMiddleLink = edgeData.sameUneven === true && Math.ceil(edgeData.sameTotalHalf) === edgeData.sameIndex;
+            edgeData.sameLowerHalf = edgeData.sameIndex > edgeData.sameTotalHalf;
+            edgeData.sameIndexCorrected = edgeData.sameLowerHalf ? (Math.ceil(edgeData.sameTotalHalf) - edgeData.sameIndex) : edgeData.sameIndex;
+        });
+    }
+
+}
+
+class Node extends eventemitter3 {
+
+    type = 'node'
+
+    constructor(data, view) {
+        super();
+        const self = this;
+        this.data = new Proxy({ 
+            size: 15,
+            ...data
+        }, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', node: self });
+                return true;
+            }
+        });
+        this.view = view;
+    }
+
+}
+
+class Edge extends eventemitter3 {
+
+    type = 'edge'
+    
+    // constructor({ id, source, target, label }) {
+    //     this.id = id;
+    //     this.source = source;
+    //     this.target = target;
+    //     this.label = label;
+    // }
+
+    constructor(data, view) {
+        super();
+        const self = this;
+        this.data = new Proxy(data, {
+            get: function (obj, key) {
+                return obj[key];
+            },
+            set: function (obj, key, newValue) {
+                obj[key] = newValue;
+                self.emit('update', { type: 'update', edge: self });
+                return true;
+            }
+        });
+        this.view = view;
+    }
+
+}
+
+class Layout extends eventemitter3 {
+
+    // constructor(graph) {
+    //     super();
+    //     this.graph = graph;
+    // }
+
+    data() {}
+
+    start() {}
+    
+    resume() {}
+
+    stop() {}
+
+}
+
+function tree_add(d) {
+  const x = +this._x.call(null, d),
+      y = +this._y.call(null, d);
+  return add(this.cover(x, y), x, y, d);
+}
+
+function add(tree, x, y, d) {
+  if (isNaN(x) || isNaN(y)) return tree; // ignore invalid points
+
+  var parent,
+      node = tree._root,
+      leaf = {data: d},
+      x0 = tree._x0,
+      y0 = tree._y0,
+      x1 = tree._x1,
+      y1 = tree._y1,
+      xm,
+      ym,
+      xp,
+      yp,
+      right,
+      bottom,
+      i,
+      j;
+
+  // If the tree is empty, initialize the root as a leaf.
+  if (!node) return tree._root = leaf, tree;
+
+  // Find the existing leaf for the new point, or add it.
+  while (node.length) {
+    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
+    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
+    if (parent = node, !(node = node[i = bottom << 1 | right])) return parent[i] = leaf, tree;
+  }
+
+  // Is the new point is exactly coincident with the existing point?
+  xp = +tree._x.call(null, node.data);
+  yp = +tree._y.call(null, node.data);
+  if (x === xp && y === yp) return leaf.next = node, parent ? parent[i] = leaf : tree._root = leaf, tree;
+
+  // Otherwise, split the leaf node until the old and new point are separated.
+  do {
+    parent = parent ? parent[i] = new Array(4) : tree._root = new Array(4);
+    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
+    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
+  } while ((i = bottom << 1 | right) === (j = (yp >= ym) << 1 | (xp >= xm)));
+  return parent[j] = node, parent[i] = leaf, tree;
+}
+
+function addAll(data) {
+  var d, i, n = data.length,
+      x,
+      y,
+      xz = new Array(n),
+      yz = new Array(n),
+      x0 = Infinity,
+      y0 = Infinity,
+      x1 = -Infinity,
+      y1 = -Infinity;
+
+  // Compute the points and their extent.
+  for (i = 0; i < n; ++i) {
+    if (isNaN(x = +this._x.call(null, d = data[i])) || isNaN(y = +this._y.call(null, d))) continue;
+    xz[i] = x;
+    yz[i] = y;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+
+  // If there were no (valid) points, abort.
+  if (x0 > x1 || y0 > y1) return this;
+
+  // Expand the tree to cover the new points.
+  this.cover(x0, y0).cover(x1, y1);
+
+  // Add the new points.
+  for (i = 0; i < n; ++i) {
+    add(this, xz[i], yz[i], data[i]);
+  }
+
+  return this;
+}
+
+function tree_cover(x, y) {
+  if (isNaN(x = +x) || isNaN(y = +y)) return this; // ignore invalid points
+
+  var x0 = this._x0,
+      y0 = this._y0,
+      x1 = this._x1,
+      y1 = this._y1;
+
+  // If the quadtree has no extent, initialize them.
+  // Integer extent are necessary so that if we later double the extent,
+  // the existing quadrant boundaries don’t change due to floating point error!
+  if (isNaN(x0)) {
+    x1 = (x0 = Math.floor(x)) + 1;
+    y1 = (y0 = Math.floor(y)) + 1;
+  }
+
+  // Otherwise, double repeatedly to cover.
+  else {
+    var z = x1 - x0 || 1,
+        node = this._root,
+        parent,
+        i;
+
+    while (x0 > x || x >= x1 || y0 > y || y >= y1) {
+      i = (y < y0) << 1 | (x < x0);
+      parent = new Array(4), parent[i] = node, node = parent, z *= 2;
+      switch (i) {
+        case 0: x1 = x0 + z, y1 = y0 + z; break;
+        case 1: x0 = x1 - z, y1 = y0 + z; break;
+        case 2: x1 = x0 + z, y0 = y1 - z; break;
+        case 3: x0 = x1 - z, y0 = y1 - z; break;
+      }
+    }
+
+    if (this._root && this._root.length) this._root = node;
+  }
+
+  this._x0 = x0;
+  this._y0 = y0;
+  this._x1 = x1;
+  this._y1 = y1;
+  return this;
+}
+
+function tree_data() {
+  var data = [];
+  this.visit(function(node) {
+    if (!node.length) do data.push(node.data); while (node = node.next)
+  });
+  return data;
+}
+
+function tree_extent(_) {
+  return arguments.length
+      ? this.cover(+_[0][0], +_[0][1]).cover(+_[1][0], +_[1][1])
+      : isNaN(this._x0) ? undefined : [[this._x0, this._y0], [this._x1, this._y1]];
+}
+
+function Quad(node, x0, y0, x1, y1) {
+  this.node = node;
+  this.x0 = x0;
+  this.y0 = y0;
+  this.x1 = x1;
+  this.y1 = y1;
+}
+
+function tree_find(x, y, radius) {
+  var data,
+      x0 = this._x0,
+      y0 = this._y0,
+      x1,
+      y1,
+      x2,
+      y2,
+      x3 = this._x1,
+      y3 = this._y1,
+      quads = [],
+      node = this._root,
+      q,
+      i;
+
+  if (node) quads.push(new Quad(node, x0, y0, x3, y3));
+  if (radius == null) radius = Infinity;
+  else {
+    x0 = x - radius, y0 = y - radius;
+    x3 = x + radius, y3 = y + radius;
+    radius *= radius;
+  }
+
+  while (q = quads.pop()) {
+
+    // Stop searching if this quadrant can’t contain a closer node.
+    if (!(node = q.node)
+        || (x1 = q.x0) > x3
+        || (y1 = q.y0) > y3
+        || (x2 = q.x1) < x0
+        || (y2 = q.y1) < y0) continue;
+
+    // Bisect the current quadrant.
+    if (node.length) {
+      var xm = (x1 + x2) / 2,
+          ym = (y1 + y2) / 2;
+
+      quads.push(
+        new Quad(node[3], xm, ym, x2, y2),
+        new Quad(node[2], x1, ym, xm, y2),
+        new Quad(node[1], xm, y1, x2, ym),
+        new Quad(node[0], x1, y1, xm, ym)
+      );
+
+      // Visit the closest quadrant first.
+      if (i = (y >= ym) << 1 | (x >= xm)) {
+        q = quads[quads.length - 1];
+        quads[quads.length - 1] = quads[quads.length - 1 - i];
+        quads[quads.length - 1 - i] = q;
+      }
+    }
+
+    // Visit this point. (Visiting coincident points isn’t necessary!)
+    else {
+      var dx = x - +this._x.call(null, node.data),
+          dy = y - +this._y.call(null, node.data),
+          d2 = dx * dx + dy * dy;
+      if (d2 < radius) {
+        var d = Math.sqrt(radius = d2);
+        x0 = x - d, y0 = y - d;
+        x3 = x + d, y3 = y + d;
+        data = node.data;
+      }
+    }
+  }
+
+  return data;
+}
+
+function tree_remove(d) {
+  if (isNaN(x = +this._x.call(null, d)) || isNaN(y = +this._y.call(null, d))) return this; // ignore invalid points
+
+  var parent,
+      node = this._root,
+      retainer,
+      previous,
+      next,
+      x0 = this._x0,
+      y0 = this._y0,
+      x1 = this._x1,
+      y1 = this._y1,
+      x,
+      y,
+      xm,
+      ym,
+      right,
+      bottom,
+      i,
+      j;
+
+  // If the tree is empty, initialize the root as a leaf.
+  if (!node) return this;
+
+  // Find the leaf node for the point.
+  // While descending, also retain the deepest parent with a non-removed sibling.
+  if (node.length) while (true) {
+    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
+    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
+    if (!(parent = node, node = node[i = bottom << 1 | right])) return this;
+    if (!node.length) break;
+    if (parent[(i + 1) & 3] || parent[(i + 2) & 3] || parent[(i + 3) & 3]) retainer = parent, j = i;
+  }
+
+  // Find the point to remove.
+  while (node.data !== d) if (!(previous = node, node = node.next)) return this;
+  if (next = node.next) delete node.next;
+
+  // If there are multiple coincident points, remove just the point.
+  if (previous) return (next ? previous.next = next : delete previous.next), this;
+
+  // If this is the root point, remove it.
+  if (!parent) return this._root = next, this;
+
+  // Remove this leaf.
+  next ? parent[i] = next : delete parent[i];
+
+  // If the parent now contains exactly one leaf, collapse superfluous parents.
+  if ((node = parent[0] || parent[1] || parent[2] || parent[3])
+      && node === (parent[3] || parent[2] || parent[1] || parent[0])
+      && !node.length) {
+    if (retainer) retainer[j] = node;
+    else this._root = node;
+  }
+
+  return this;
+}
+
+function removeAll(data) {
+  for (var i = 0, n = data.length; i < n; ++i) this.remove(data[i]);
+  return this;
+}
+
+function tree_root() {
+  return this._root;
+}
+
+function tree_size() {
+  var size = 0;
+  this.visit(function(node) {
+    if (!node.length) do ++size; while (node = node.next)
+  });
+  return size;
+}
+
+function tree_visit(callback) {
+  var quads = [], q, node = this._root, child, x0, y0, x1, y1;
+  if (node) quads.push(new Quad(node, this._x0, this._y0, this._x1, this._y1));
+  while (q = quads.pop()) {
+    if (!callback(node = q.node, x0 = q.x0, y0 = q.y0, x1 = q.x1, y1 = q.y1) && node.length) {
+      var xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
+      if (child = node[3]) quads.push(new Quad(child, xm, ym, x1, y1));
+      if (child = node[2]) quads.push(new Quad(child, x0, ym, xm, y1));
+      if (child = node[1]) quads.push(new Quad(child, xm, y0, x1, ym));
+      if (child = node[0]) quads.push(new Quad(child, x0, y0, xm, ym));
+    }
+  }
+  return this;
+}
+
+function tree_visitAfter(callback) {
+  var quads = [], next = [], q;
+  if (this._root) quads.push(new Quad(this._root, this._x0, this._y0, this._x1, this._y1));
+  while (q = quads.pop()) {
+    var node = q.node;
+    if (node.length) {
+      var child, x0 = q.x0, y0 = q.y0, x1 = q.x1, y1 = q.y1, xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
+      if (child = node[0]) quads.push(new Quad(child, x0, y0, xm, ym));
+      if (child = node[1]) quads.push(new Quad(child, xm, y0, x1, ym));
+      if (child = node[2]) quads.push(new Quad(child, x0, ym, xm, y1));
+      if (child = node[3]) quads.push(new Quad(child, xm, ym, x1, y1));
+    }
+    next.push(q);
+  }
+  while (q = next.pop()) {
+    callback(q.node, q.x0, q.y0, q.x1, q.y1);
+  }
+  return this;
+}
+
+function defaultX(d) {
+  return d[0];
+}
+
+function tree_x(_) {
+  return arguments.length ? (this._x = _, this) : this._x;
+}
+
+function defaultY(d) {
+  return d[1];
+}
+
+function tree_y(_) {
+  return arguments.length ? (this._y = _, this) : this._y;
+}
+
+function quadtree(nodes, x, y) {
+  var tree = new Quadtree(x == null ? defaultX : x, y == null ? defaultY : y, NaN, NaN, NaN, NaN);
+  return nodes == null ? tree : tree.addAll(nodes);
+}
+
+function Quadtree(x, y, x0, y0, x1, y1) {
+  this._x = x;
+  this._y = y;
+  this._x0 = x0;
+  this._y0 = y0;
+  this._x1 = x1;
+  this._y1 = y1;
+  this._root = undefined;
+}
+
+function leaf_copy(leaf) {
+  var copy = {data: leaf.data}, next = copy;
+  while (leaf = leaf.next) next = next.next = {data: leaf.data};
+  return copy;
+}
+
+var treeProto = quadtree.prototype = Quadtree.prototype;
+
+treeProto.copy = function() {
+  var copy = new Quadtree(this._x, this._y, this._x0, this._y0, this._x1, this._y1),
+      node = this._root,
+      nodes,
+      child;
+
+  if (!node) return copy;
+
+  if (!node.length) return copy._root = leaf_copy(node), copy;
+
+  nodes = [{source: node, target: copy._root = new Array(4)}];
+  while (node = nodes.pop()) {
+    for (var i = 0; i < 4; ++i) {
+      if (child = node.source[i]) {
+        if (child.length) nodes.push({source: child, target: node.target[i] = new Array(4)});
+        else node.target[i] = leaf_copy(child);
+      }
+    }
+  }
+
+  return copy;
+};
+
+treeProto.add = tree_add;
+treeProto.addAll = addAll;
+treeProto.cover = tree_cover;
+treeProto.data = tree_data;
+treeProto.extent = tree_extent;
+treeProto.find = tree_find;
+treeProto.remove = tree_remove;
+treeProto.removeAll = removeAll;
+treeProto.root = tree_root;
+treeProto.size = tree_size;
+treeProto.visit = tree_visit;
+treeProto.visitAfter = tree_visitAfter;
+treeProto.x = tree_x;
+treeProto.y = tree_y;
+
+function constant$1(x) {
+  return function() {
+    return x;
+  };
+}
+
+function jiggle(random) {
+  return (random() - 0.5) * 1e-6;
+}
+
+function index$1(d) {
+  return d.index;
+}
+
+function find$1(nodeById, nodeId) {
+  var node = nodeById.get(nodeId);
+  if (!node) throw new Error("node not found: " + nodeId);
+  return node;
+}
+
+function link(links) {
+  var id = index$1,
+      strength = defaultStrength,
+      strengths,
+      distance = constant$1(30),
+      distances,
+      nodes,
+      count,
+      bias,
+      random,
+      iterations = 1;
+
+  if (links == null) links = [];
+
+  function defaultStrength(link) {
+    return 1 / Math.min(count[link.source.index], count[link.target.index]);
+  }
+
+  function force(alpha) {
+    for (var k = 0, n = links.length; k < iterations; ++k) {
+      for (var i = 0, link, source, target, x, y, l, b; i < n; ++i) {
+        link = links[i], source = link.source, target = link.target;
+        x = target.x + target.vx - source.x - source.vx || jiggle(random);
+        y = target.y + target.vy - source.y - source.vy || jiggle(random);
+        l = Math.sqrt(x * x + y * y);
+        l = (l - distances[i]) / l * alpha * strengths[i];
+        x *= l, y *= l;
+        target.vx -= x * (b = bias[i]);
+        target.vy -= y * b;
+        source.vx += x * (b = 1 - b);
+        source.vy += y * b;
+      }
+    }
+  }
+
+  function initialize() {
+    if (!nodes) return;
+
+    var i,
+        n = nodes.length,
+        m = links.length,
+        nodeById = new Map(nodes.map((d, i) => [id(d, i, nodes), d])),
+        link;
+
+    for (i = 0, count = new Array(n); i < m; ++i) {
+      link = links[i], link.index = i;
+      if (typeof link.source !== "object") link.source = find$1(nodeById, link.source);
+      if (typeof link.target !== "object") link.target = find$1(nodeById, link.target);
+      count[link.source.index] = (count[link.source.index] || 0) + 1;
+      count[link.target.index] = (count[link.target.index] || 0) + 1;
+    }
+
+    for (i = 0, bias = new Array(m); i < m; ++i) {
+      link = links[i], bias[i] = count[link.source.index] / (count[link.source.index] + count[link.target.index]);
+    }
+
+    strengths = new Array(m), initializeStrength();
+    distances = new Array(m), initializeDistance();
+  }
+
+  function initializeStrength() {
+    if (!nodes) return;
+
+    for (var i = 0, n = links.length; i < n; ++i) {
+      strengths[i] = +strength(links[i], i, links);
+    }
+  }
+
+  function initializeDistance() {
+    if (!nodes) return;
+
+    for (var i = 0, n = links.length; i < n; ++i) {
+      distances[i] = +distance(links[i], i, links);
+    }
+  }
+
+  force.initialize = function(_nodes, _random) {
+    nodes = _nodes;
+    random = _random;
+    initialize();
+  };
+
+  force.links = function(_) {
+    return arguments.length ? (links = _, initialize(), force) : links;
+  };
+
+  force.id = function(_) {
+    return arguments.length ? (id = _, force) : id;
+  };
+
+  force.iterations = function(_) {
+    return arguments.length ? (iterations = +_, force) : iterations;
+  };
+
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$1(+_), initializeStrength(), force) : strength;
+  };
+
+  force.distance = function(_) {
+    return arguments.length ? (distance = typeof _ === "function" ? _ : constant$1(+_), initializeDistance(), force) : distance;
+  };
+
+  return force;
+}
+
+var noop = {value: () => {}};
+
+function dispatch() {
+  for (var i = 0, n = arguments.length, _ = {}, t; i < n; ++i) {
+    if (!(t = arguments[i] + "") || (t in _) || /[\s.]/.test(t)) throw new Error("illegal type: " + t);
+    _[t] = [];
+  }
+  return new Dispatch(_);
+}
+
+function Dispatch(_) {
+  this._ = _;
+}
+
+function parseTypenames$1(typenames, types) {
+  return typenames.trim().split(/^|\s+/).map(function(t) {
+    var name = "", i = t.indexOf(".");
+    if (i >= 0) name = t.slice(i + 1), t = t.slice(0, i);
+    if (t && !types.hasOwnProperty(t)) throw new Error("unknown type: " + t);
+    return {type: t, name: name};
+  });
+}
+
+Dispatch.prototype = dispatch.prototype = {
+  constructor: Dispatch,
+  on: function(typename, callback) {
+    var _ = this._,
+        T = parseTypenames$1(typename + "", _),
+        t,
+        i = -1,
+        n = T.length;
+
+    // If no callback was specified, return the callback of the given type and name.
+    if (arguments.length < 2) {
+      while (++i < n) if ((t = (typename = T[i]).type) && (t = get(_[t], typename.name))) return t;
+      return;
+    }
+
+    // If a type was specified, set the callback for the given type and name.
+    // Otherwise, if a null callback was specified, remove callbacks of the given name.
+    if (callback != null && typeof callback !== "function") throw new Error("invalid callback: " + callback);
+    while (++i < n) {
+      if (t = (typename = T[i]).type) _[t] = set(_[t], typename.name, callback);
+      else if (callback == null) for (t in _) _[t] = set(_[t], typename.name, null);
+    }
+
+    return this;
+  },
+  copy: function() {
+    var copy = {}, _ = this._;
+    for (var t in _) copy[t] = _[t].slice();
+    return new Dispatch(copy);
+  },
+  call: function(type, that) {
+    if ((n = arguments.length - 2) > 0) for (var args = new Array(n), i = 0, n, t; i < n; ++i) args[i] = arguments[i + 2];
+    if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
+    for (t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
+  },
+  apply: function(type, that, args) {
+    if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
+    for (var t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
+  }
+};
+
+function get(type, name) {
+  for (var i = 0, n = type.length, c; i < n; ++i) {
+    if ((c = type[i]).name === name) {
+      return c.value;
+    }
+  }
+}
+
+function set(type, name, callback) {
+  for (var i = 0, n = type.length; i < n; ++i) {
+    if (type[i].name === name) {
+      type[i] = noop, type = type.slice(0, i).concat(type.slice(i + 1));
+      break;
+    }
+  }
+  if (callback != null) type.push({name: name, value: callback});
+  return type;
+}
+
+var frame = 0, // is an animation frame pending?
+    timeout = 0, // is a timeout pending?
+    interval = 0, // are any timers active?
+    pokeDelay = 1000, // how frequently we check for clock skew
+    taskHead,
+    taskTail,
+    clockLast = 0,
+    clockNow = 0,
+    clockSkew = 0,
+    clock = typeof performance === "object" && performance.now ? performance : Date,
+    setFrame = typeof window === "object" && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(f) { setTimeout(f, 17); };
+
+function now() {
+  return clockNow || (setFrame(clearNow), clockNow = clock.now() + clockSkew);
+}
+
+function clearNow() {
+  clockNow = 0;
+}
+
+function Timer() {
+  this._call =
+  this._time =
+  this._next = null;
+}
+
+Timer.prototype = timer.prototype = {
+  constructor: Timer,
+  restart: function(callback, delay, time) {
+    if (typeof callback !== "function") throw new TypeError("callback is not a function");
+    time = (time == null ? now() : +time) + (delay == null ? 0 : +delay);
+    if (!this._next && taskTail !== this) {
+      if (taskTail) taskTail._next = this;
+      else taskHead = this;
+      taskTail = this;
+    }
+    this._call = callback;
+    this._time = time;
+    sleep();
+  },
+  stop: function() {
+    if (this._call) {
+      this._call = null;
+      this._time = Infinity;
+      sleep();
+    }
+  }
+};
+
+function timer(callback, delay, time) {
+  var t = new Timer;
+  t.restart(callback, delay, time);
+  return t;
+}
+
+function timerFlush() {
+  now(); // Get the current time, if not already set.
+  ++frame; // Pretend we’ve set an alarm, if we haven’t already.
+  var t = taskHead, e;
+  while (t) {
+    if ((e = clockNow - t._time) >= 0) t._call.call(null, e);
+    t = t._next;
+  }
+  --frame;
+}
+
+function wake() {
+  clockNow = (clockLast = clock.now()) + clockSkew;
+  frame = timeout = 0;
+  try {
+    timerFlush();
+  } finally {
+    frame = 0;
+    nap();
+    clockNow = 0;
+  }
+}
+
+function poke() {
+  var now = clock.now(), delay = now - clockLast;
+  if (delay > pokeDelay) clockSkew -= delay, clockLast = now;
+}
+
+function nap() {
+  var t0, t1 = taskHead, t2, time = Infinity;
+  while (t1) {
+    if (t1._call) {
+      if (time > t1._time) time = t1._time;
+      t0 = t1, t1 = t1._next;
+    } else {
+      t2 = t1._next, t1._next = null;
+      t1 = t0 ? t0._next = t2 : taskHead = t2;
+    }
+  }
+  taskTail = t0;
+  sleep(time);
+}
+
+function sleep(time) {
+  if (frame) return; // Soonest alarm already set, or will be.
+  if (timeout) timeout = clearTimeout(timeout);
+  var delay = time - clockNow; // Strictly less than if we recomputed clockNow.
+  if (delay > 24) {
+    if (time < Infinity) timeout = setTimeout(wake, time - clock.now() - clockSkew);
+    if (interval) interval = clearInterval(interval);
+  } else {
+    if (!interval) clockLast = clock.now(), interval = setInterval(poke, pokeDelay);
+    frame = 1, setFrame(wake);
+  }
+}
+
+function timeout$1(callback, delay, time) {
+  var t = new Timer;
+  delay = delay == null ? 0 : +delay;
+  t.restart(elapsed => {
+    t.stop();
+    callback(elapsed + delay);
+  }, delay, time);
+  return t;
+}
+
+// https://en.wikipedia.org/wiki/Linear_congruential_generator#Parameters_in_common_use
+const a = 1664525;
+const c = 1013904223;
+const m = 4294967296; // 2^32
+
+function lcg() {
+  let s = 1;
+  return () => (s = (a * s + c) % m) / m;
+}
+
+function x(d) {
+  return d.x;
+}
+
+function y(d) {
+  return d.y;
+}
+
+var initialRadius = 10,
+    initialAngle = Math.PI * (3 - Math.sqrt(5));
+
+function simulation(nodes) {
+  var simulation,
+      alpha = 1,
+      alphaMin = 0.001,
+      alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
+      alphaTarget = 0,
+      velocityDecay = 0.6,
+      forces = new Map(),
+      stepper = timer(step),
+      event = dispatch("tick", "end"),
+      random = lcg();
+
+  if (nodes == null) nodes = [];
+
+  function step() {
+    tick();
+    event.call("tick", simulation);
+    if (alpha < alphaMin) {
+      stepper.stop();
+      event.call("end", simulation);
+    }
+  }
+
+  function tick(iterations) {
+    var i, n = nodes.length, node;
+
+    if (iterations === undefined) iterations = 1;
+
+    for (var k = 0; k < iterations; ++k) {
+      alpha += (alphaTarget - alpha) * alphaDecay;
+
+      forces.forEach(function(force) {
+        force(alpha);
+      });
+
+      for (i = 0; i < n; ++i) {
+        node = nodes[i];
+        if (node.fx == null) node.x += node.vx *= velocityDecay;
+        else node.x = node.fx, node.vx = 0;
+        if (node.fy == null) node.y += node.vy *= velocityDecay;
+        else node.y = node.fy, node.vy = 0;
+      }
+    }
+
+    return simulation;
+  }
+
+  function initializeNodes() {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.index = i;
+      if (node.fx != null) node.x = node.fx;
+      if (node.fy != null) node.y = node.fy;
+      if (isNaN(node.x) || isNaN(node.y)) {
+        var radius = initialRadius * Math.sqrt(0.5 + i), angle = i * initialAngle;
+        node.x = radius * Math.cos(angle);
+        node.y = radius * Math.sin(angle);
+      }
+      if (isNaN(node.vx) || isNaN(node.vy)) {
+        node.vx = node.vy = 0;
+      }
+    }
+  }
+
+  function initializeForce(force) {
+    if (force.initialize) force.initialize(nodes, random);
+    return force;
+  }
+
+  initializeNodes();
+
+  return simulation = {
+    tick: tick,
+
+    restart: function() {
+      return stepper.restart(step), simulation;
+    },
+
+    stop: function() {
+      return stepper.stop(), simulation;
+    },
+
+    nodes: function(_) {
+      return arguments.length ? (nodes = _, initializeNodes(), forces.forEach(initializeForce), simulation) : nodes;
+    },
+
+    alpha: function(_) {
+      return arguments.length ? (alpha = +_, simulation) : alpha;
+    },
+
+    alphaMin: function(_) {
+      return arguments.length ? (alphaMin = +_, simulation) : alphaMin;
+    },
+
+    alphaDecay: function(_) {
+      return arguments.length ? (alphaDecay = +_, simulation) : +alphaDecay;
+    },
+
+    alphaTarget: function(_) {
+      return arguments.length ? (alphaTarget = +_, simulation) : alphaTarget;
+    },
+
+    velocityDecay: function(_) {
+      return arguments.length ? (velocityDecay = 1 - _, simulation) : 1 - velocityDecay;
+    },
+
+    randomSource: function(_) {
+      return arguments.length ? (random = _, forces.forEach(initializeForce), simulation) : random;
+    },
+
+    force: function(name, _) {
+      return arguments.length > 1 ? ((_ == null ? forces.delete(name) : forces.set(name, initializeForce(_))), simulation) : forces.get(name);
+    },
+
+    find: function(x, y, radius) {
+      var i = 0,
+          n = nodes.length,
+          dx,
+          dy,
+          d2,
+          node,
+          closest;
+
+      if (radius == null) radius = Infinity;
+      else radius *= radius;
+
+      for (i = 0; i < n; ++i) {
+        node = nodes[i];
+        dx = x - node.x;
+        dy = y - node.y;
+        d2 = dx * dx + dy * dy;
+        if (d2 < radius) closest = node, radius = d2;
+      }
+
+      return closest;
+    },
+
+    on: function(name, _) {
+      return arguments.length > 1 ? (event.on(name, _), simulation) : event.on(name);
+    }
+  };
+}
+
+function manyBody() {
+  var nodes,
+      node,
+      random,
+      alpha,
+      strength = constant$1(-30),
+      strengths,
+      distanceMin2 = 1,
+      distanceMax2 = Infinity,
+      theta2 = 0.81;
+
+  function force(_) {
+    var i, n = nodes.length, tree = quadtree(nodes, x, y).visitAfter(accumulate);
+    for (alpha = _, i = 0; i < n; ++i) node = nodes[i], tree.visit(apply);
+  }
+
+  function initialize() {
+    if (!nodes) return;
+    var i, n = nodes.length, node;
+    strengths = new Array(n);
+    for (i = 0; i < n; ++i) node = nodes[i], strengths[node.index] = +strength(node, i, nodes);
+  }
+
+  function accumulate(quad) {
+    var strength = 0, q, c, weight = 0, x, y, i;
+
+    // For internal nodes, accumulate forces from child quadrants.
+    if (quad.length) {
+      for (x = y = i = 0; i < 4; ++i) {
+        if ((q = quad[i]) && (c = Math.abs(q.value))) {
+          strength += q.value, weight += c, x += c * q.x, y += c * q.y;
+        }
+      }
+      quad.x = x / weight;
+      quad.y = y / weight;
+    }
+
+    // For leaf nodes, accumulate forces from coincident quadrants.
+    else {
+      q = quad;
+      q.x = q.data.x;
+      q.y = q.data.y;
+      do strength += strengths[q.data.index];
+      while (q = q.next);
+    }
+
+    quad.value = strength;
+  }
+
+  function apply(quad, x1, _, x2) {
+    if (!quad.value) return true;
+
+    var x = quad.x - node.x,
+        y = quad.y - node.y,
+        w = x2 - x1,
+        l = x * x + y * y;
+
+    // Apply the Barnes-Hut approximation if possible.
+    // Limit forces for very close nodes; randomize direction if coincident.
+    if (w * w / theta2 < l) {
+      if (l < distanceMax2) {
+        if (x === 0) x = jiggle(random), l += x * x;
+        if (y === 0) y = jiggle(random), l += y * y;
+        if (l < distanceMin2) l = Math.sqrt(distanceMin2 * l);
+        node.vx += x * quad.value * alpha / l;
+        node.vy += y * quad.value * alpha / l;
+      }
+      return true;
+    }
+
+    // Otherwise, process points directly.
+    else if (quad.length || l >= distanceMax2) return;
+
+    // Limit forces for very close nodes; randomize direction if coincident.
+    if (quad.data !== node || quad.next) {
+      if (x === 0) x = jiggle(random), l += x * x;
+      if (y === 0) y = jiggle(random), l += y * y;
+      if (l < distanceMin2) l = Math.sqrt(distanceMin2 * l);
+    }
+
+    do if (quad.data !== node) {
+      w = strengths[quad.data.index] * alpha / l;
+      node.vx += x * w;
+      node.vy += y * w;
+    } while (quad = quad.next);
+  }
+
+  force.initialize = function(_nodes, _random) {
+    nodes = _nodes;
+    random = _random;
+    initialize();
+  };
+
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$1(+_), initialize(), force) : strength;
+  };
+
+  force.distanceMin = function(_) {
+    return arguments.length ? (distanceMin2 = _ * _, force) : Math.sqrt(distanceMin2);
+  };
+
+  force.distanceMax = function(_) {
+    return arguments.length ? (distanceMax2 = _ * _, force) : Math.sqrt(distanceMax2);
+  };
+
+  force.theta = function(_) {
+    return arguments.length ? (theta2 = _ * _, force) : Math.sqrt(theta2);
+  };
+
+  return force;
+}
+
+function x$1(x) {
+  var strength = constant$1(0.1),
+      nodes,
+      strengths,
+      xz;
+
+  if (typeof x !== "function") x = constant$1(x == null ? 0 : +x);
+
+  function force(alpha) {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.vx += (xz[i] - node.x) * strengths[i] * alpha;
+    }
+  }
+
+  function initialize() {
+    if (!nodes) return;
+    var i, n = nodes.length;
+    strengths = new Array(n);
+    xz = new Array(n);
+    for (i = 0; i < n; ++i) {
+      strengths[i] = isNaN(xz[i] = +x(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
+    }
+  }
+
+  force.initialize = function(_) {
+    nodes = _;
+    initialize();
+  };
+
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$1(+_), initialize(), force) : strength;
+  };
+
+  force.x = function(_) {
+    return arguments.length ? (x = typeof _ === "function" ? _ : constant$1(+_), initialize(), force) : x;
+  };
+
+  return force;
+}
+
+function y$1(y) {
+  var strength = constant$1(0.1),
+      nodes,
+      strengths,
+      yz;
+
+  if (typeof y !== "function") y = constant$1(y == null ? 0 : +y);
+
+  function force(alpha) {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.vy += (yz[i] - node.y) * strengths[i] * alpha;
+    }
+  }
+
+  function initialize() {
+    if (!nodes) return;
+    var i, n = nodes.length;
+    strengths = new Array(n);
+    yz = new Array(n);
+    for (i = 0; i < n; ++i) {
+      strengths[i] = isNaN(yz[i] = +y(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
+    }
+  }
+
+  force.initialize = function(_) {
+    nodes = _;
+    initialize();
+  };
+
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$1(+_), initialize(), force) : strength;
+  };
+
+  force.y = function(_) {
+    return arguments.length ? (y = typeof _ === "function" ? _ : constant$1(+_), initialize(), force) : y;
+  };
+
+  return force;
+}
+
+class ForceLayout extends Layout {
+
+    constructor({
+        linkDistance = 200,
+        manyBodyStrength = -500,
+        manyBodyTheta = 0.9,
+        xStrength = 0.05,
+        yStrength = 0.05,
+    }) {
+        super();
+        
+        this.linkForce = link().id(d => d.id).distance(linkDistance);
+        this.manyBodyForce = manyBody().strength(manyBodyStrength).theta(manyBodyTheta);
+        this.xForce = x$1(0).strength(xStrength);
+        this.yForce = y$1(0).strength(yStrength);
+
+        this.forceSimulation = simulation();
+
+        // 不要自动启动布局
+        this.forceSimulation.stop()
+            // 配置排斥力，引力，连接力
+            .force('edge', this.linkForce)
+            .force('change', this.manyBodyForce)
+            .force('x', this.xForce)
+            .force('y', this.yForce);
+
+        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
+        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
+
+    }
+
+    data({ nodes, edges }) {
+        this.reset();
+        this.forceSimulation.nodes(nodes);
+        this.linkForce.links(edges);
+    }
+
+    // 重置状态
+    reset() {
+        this.forceSimulation.alpha(1);
+    }
+
+    start() {
+        this.forceSimulation.stop();
+        this.forceSimulation.alpha(1);
+        // d3-force没有start方法，需要自己模拟
+        this.forceSimulation.restart();
+    }
+
+    resume() {
+        this.forceSimulation.restart();
+    }
+
+    stop() {
+        this.forceSimulation.stop();
+    }
+
+}
+
 function nopropagation(event) {
   event.stopImmediatePropagation();
 }
@@ -1300,7 +3045,7 @@ function yesdrag(view, noclick) {
   }
 }
 
-var constant$1 = x => () => x;
+var constant$2 = x => () => x;
 
 function DragEvent(type, {
   sourceEvent,
@@ -1490,19 +3235,19 @@ function drag() {
   }
 
   drag.filter = function(_) {
-    return arguments.length ? (filter = typeof _ === "function" ? _ : constant$1(!!_), drag) : filter;
+    return arguments.length ? (filter = typeof _ === "function" ? _ : constant$2(!!_), drag) : filter;
   };
 
   drag.container = function(_) {
-    return arguments.length ? (container = typeof _ === "function" ? _ : constant$1(_), drag) : container;
+    return arguments.length ? (container = typeof _ === "function" ? _ : constant$2(_), drag) : container;
   };
 
   drag.subject = function(_) {
-    return arguments.length ? (subject = typeof _ === "function" ? _ : constant$1(_), drag) : subject;
+    return arguments.length ? (subject = typeof _ === "function" ? _ : constant$2(_), drag) : subject;
   };
 
   drag.touchable = function(_) {
-    return arguments.length ? (touchable = typeof _ === "function" ? _ : constant$1(!!_), drag) : touchable;
+    return arguments.length ? (touchable = typeof _ === "function" ? _ : constant$2(!!_), drag) : touchable;
   };
 
   drag.on = function() {
@@ -1898,7 +3643,7 @@ function hsl2rgb(h, m1, m2) {
       : m1) * 255;
 }
 
-var constant$2 = x => () => x;
+var constant$3 = x => () => x;
 
 function linear(a, d) {
   return function(t) {
@@ -1914,13 +3659,13 @@ function exponential(a, b, y) {
 
 function gamma(y) {
   return (y = +y) === 1 ? nogamma : function(a, b) {
-    return b - a ? exponential(a, b, y) : constant$2(isNaN(a) ? b : a);
+    return b - a ? exponential(a, b, y) : constant$3(isNaN(a) ? b : a);
   };
 }
 
 function nogamma(a, b) {
   var d = b - a;
-  return d ? linear(a, d) : constant$2(isNaN(a) ? b : a);
+  return d ? linear(a, d) : constant$3(isNaN(a) ? b : a);
 }
 
 var interpolateRgb = (function rgbGamma(y) {
@@ -2190,127 +3935,6 @@ var interpolateZoom = (function zoomRho(rho, rho2, rho4) {
 
   return zoom;
 })(Math.SQRT2, 2, 4);
-
-var frame = 0, // is an animation frame pending?
-    timeout = 0, // is a timeout pending?
-    interval = 0, // are any timers active?
-    pokeDelay = 1000, // how frequently we check for clock skew
-    taskHead,
-    taskTail,
-    clockLast = 0,
-    clockNow = 0,
-    clockSkew = 0,
-    clock = typeof performance === "object" && performance.now ? performance : Date,
-    setFrame = typeof window === "object" && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(f) { setTimeout(f, 17); };
-
-function now() {
-  return clockNow || (setFrame(clearNow), clockNow = clock.now() + clockSkew);
-}
-
-function clearNow() {
-  clockNow = 0;
-}
-
-function Timer() {
-  this._call =
-  this._time =
-  this._next = null;
-}
-
-Timer.prototype = timer.prototype = {
-  constructor: Timer,
-  restart: function(callback, delay, time) {
-    if (typeof callback !== "function") throw new TypeError("callback is not a function");
-    time = (time == null ? now() : +time) + (delay == null ? 0 : +delay);
-    if (!this._next && taskTail !== this) {
-      if (taskTail) taskTail._next = this;
-      else taskHead = this;
-      taskTail = this;
-    }
-    this._call = callback;
-    this._time = time;
-    sleep();
-  },
-  stop: function() {
-    if (this._call) {
-      this._call = null;
-      this._time = Infinity;
-      sleep();
-    }
-  }
-};
-
-function timer(callback, delay, time) {
-  var t = new Timer;
-  t.restart(callback, delay, time);
-  return t;
-}
-
-function timerFlush() {
-  now(); // Get the current time, if not already set.
-  ++frame; // Pretend we’ve set an alarm, if we haven’t already.
-  var t = taskHead, e;
-  while (t) {
-    if ((e = clockNow - t._time) >= 0) t._call.call(null, e);
-    t = t._next;
-  }
-  --frame;
-}
-
-function wake() {
-  clockNow = (clockLast = clock.now()) + clockSkew;
-  frame = timeout = 0;
-  try {
-    timerFlush();
-  } finally {
-    frame = 0;
-    nap();
-    clockNow = 0;
-  }
-}
-
-function poke() {
-  var now = clock.now(), delay = now - clockLast;
-  if (delay > pokeDelay) clockSkew -= delay, clockLast = now;
-}
-
-function nap() {
-  var t0, t1 = taskHead, t2, time = Infinity;
-  while (t1) {
-    if (t1._call) {
-      if (time > t1._time) time = t1._time;
-      t0 = t1, t1 = t1._next;
-    } else {
-      t2 = t1._next, t1._next = null;
-      t1 = t0 ? t0._next = t2 : taskHead = t2;
-    }
-  }
-  taskTail = t0;
-  sleep(time);
-}
-
-function sleep(time) {
-  if (frame) return; // Soonest alarm already set, or will be.
-  if (timeout) timeout = clearTimeout(timeout);
-  var delay = time - clockNow; // Strictly less than if we recomputed clockNow.
-  if (delay > 24) {
-    if (time < Infinity) timeout = setTimeout(wake, time - clock.now() - clockSkew);
-    if (interval) interval = clearInterval(interval);
-  } else {
-    if (!interval) clockLast = clock.now(), interval = setInterval(poke, pokeDelay);
-    frame = 1, setFrame(wake);
-  }
-}
-
-function timeout$1(callback, delay, time) {
-  var t = new Timer;
-  delay = delay == null ? 0 : +delay;
-  t.restart(elapsed => {
-    t.stop();
-    callback(elapsed + delay);
-  }, delay, time);
-  return t;
-}
 
 var emptyOn = dispatch("start", "end", "cancel", "interrupt");
 var emptyTween = [];
@@ -3181,893 +4805,6 @@ function selection_transition(name) {
 selection.prototype.interrupt = selection_interrupt;
 selection.prototype.transition = selection_transition;
 
-function tree_add(d) {
-  const x = +this._x.call(null, d),
-      y = +this._y.call(null, d);
-  return add(this.cover(x, y), x, y, d);
-}
-
-function add(tree, x, y, d) {
-  if (isNaN(x) || isNaN(y)) return tree; // ignore invalid points
-
-  var parent,
-      node = tree._root,
-      leaf = {data: d},
-      x0 = tree._x0,
-      y0 = tree._y0,
-      x1 = tree._x1,
-      y1 = tree._y1,
-      xm,
-      ym,
-      xp,
-      yp,
-      right,
-      bottom,
-      i,
-      j;
-
-  // If the tree is empty, initialize the root as a leaf.
-  if (!node) return tree._root = leaf, tree;
-
-  // Find the existing leaf for the new point, or add it.
-  while (node.length) {
-    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
-    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
-    if (parent = node, !(node = node[i = bottom << 1 | right])) return parent[i] = leaf, tree;
-  }
-
-  // Is the new point is exactly coincident with the existing point?
-  xp = +tree._x.call(null, node.data);
-  yp = +tree._y.call(null, node.data);
-  if (x === xp && y === yp) return leaf.next = node, parent ? parent[i] = leaf : tree._root = leaf, tree;
-
-  // Otherwise, split the leaf node until the old and new point are separated.
-  do {
-    parent = parent ? parent[i] = new Array(4) : tree._root = new Array(4);
-    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
-    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
-  } while ((i = bottom << 1 | right) === (j = (yp >= ym) << 1 | (xp >= xm)));
-  return parent[j] = node, parent[i] = leaf, tree;
-}
-
-function addAll(data) {
-  var d, i, n = data.length,
-      x,
-      y,
-      xz = new Array(n),
-      yz = new Array(n),
-      x0 = Infinity,
-      y0 = Infinity,
-      x1 = -Infinity,
-      y1 = -Infinity;
-
-  // Compute the points and their extent.
-  for (i = 0; i < n; ++i) {
-    if (isNaN(x = +this._x.call(null, d = data[i])) || isNaN(y = +this._y.call(null, d))) continue;
-    xz[i] = x;
-    yz[i] = y;
-    if (x < x0) x0 = x;
-    if (x > x1) x1 = x;
-    if (y < y0) y0 = y;
-    if (y > y1) y1 = y;
-  }
-
-  // If there were no (valid) points, abort.
-  if (x0 > x1 || y0 > y1) return this;
-
-  // Expand the tree to cover the new points.
-  this.cover(x0, y0).cover(x1, y1);
-
-  // Add the new points.
-  for (i = 0; i < n; ++i) {
-    add(this, xz[i], yz[i], data[i]);
-  }
-
-  return this;
-}
-
-function tree_cover(x, y) {
-  if (isNaN(x = +x) || isNaN(y = +y)) return this; // ignore invalid points
-
-  var x0 = this._x0,
-      y0 = this._y0,
-      x1 = this._x1,
-      y1 = this._y1;
-
-  // If the quadtree has no extent, initialize them.
-  // Integer extent are necessary so that if we later double the extent,
-  // the existing quadrant boundaries don’t change due to floating point error!
-  if (isNaN(x0)) {
-    x1 = (x0 = Math.floor(x)) + 1;
-    y1 = (y0 = Math.floor(y)) + 1;
-  }
-
-  // Otherwise, double repeatedly to cover.
-  else {
-    var z = x1 - x0 || 1,
-        node = this._root,
-        parent,
-        i;
-
-    while (x0 > x || x >= x1 || y0 > y || y >= y1) {
-      i = (y < y0) << 1 | (x < x0);
-      parent = new Array(4), parent[i] = node, node = parent, z *= 2;
-      switch (i) {
-        case 0: x1 = x0 + z, y1 = y0 + z; break;
-        case 1: x0 = x1 - z, y1 = y0 + z; break;
-        case 2: x1 = x0 + z, y0 = y1 - z; break;
-        case 3: x0 = x1 - z, y0 = y1 - z; break;
-      }
-    }
-
-    if (this._root && this._root.length) this._root = node;
-  }
-
-  this._x0 = x0;
-  this._y0 = y0;
-  this._x1 = x1;
-  this._y1 = y1;
-  return this;
-}
-
-function tree_data() {
-  var data = [];
-  this.visit(function(node) {
-    if (!node.length) do data.push(node.data); while (node = node.next)
-  });
-  return data;
-}
-
-function tree_extent(_) {
-  return arguments.length
-      ? this.cover(+_[0][0], +_[0][1]).cover(+_[1][0], +_[1][1])
-      : isNaN(this._x0) ? undefined : [[this._x0, this._y0], [this._x1, this._y1]];
-}
-
-function Quad(node, x0, y0, x1, y1) {
-  this.node = node;
-  this.x0 = x0;
-  this.y0 = y0;
-  this.x1 = x1;
-  this.y1 = y1;
-}
-
-function tree_find(x, y, radius) {
-  var data,
-      x0 = this._x0,
-      y0 = this._y0,
-      x1,
-      y1,
-      x2,
-      y2,
-      x3 = this._x1,
-      y3 = this._y1,
-      quads = [],
-      node = this._root,
-      q,
-      i;
-
-  if (node) quads.push(new Quad(node, x0, y0, x3, y3));
-  if (radius == null) radius = Infinity;
-  else {
-    x0 = x - radius, y0 = y - radius;
-    x3 = x + radius, y3 = y + radius;
-    radius *= radius;
-  }
-
-  while (q = quads.pop()) {
-
-    // Stop searching if this quadrant can’t contain a closer node.
-    if (!(node = q.node)
-        || (x1 = q.x0) > x3
-        || (y1 = q.y0) > y3
-        || (x2 = q.x1) < x0
-        || (y2 = q.y1) < y0) continue;
-
-    // Bisect the current quadrant.
-    if (node.length) {
-      var xm = (x1 + x2) / 2,
-          ym = (y1 + y2) / 2;
-
-      quads.push(
-        new Quad(node[3], xm, ym, x2, y2),
-        new Quad(node[2], x1, ym, xm, y2),
-        new Quad(node[1], xm, y1, x2, ym),
-        new Quad(node[0], x1, y1, xm, ym)
-      );
-
-      // Visit the closest quadrant first.
-      if (i = (y >= ym) << 1 | (x >= xm)) {
-        q = quads[quads.length - 1];
-        quads[quads.length - 1] = quads[quads.length - 1 - i];
-        quads[quads.length - 1 - i] = q;
-      }
-    }
-
-    // Visit this point. (Visiting coincident points isn’t necessary!)
-    else {
-      var dx = x - +this._x.call(null, node.data),
-          dy = y - +this._y.call(null, node.data),
-          d2 = dx * dx + dy * dy;
-      if (d2 < radius) {
-        var d = Math.sqrt(radius = d2);
-        x0 = x - d, y0 = y - d;
-        x3 = x + d, y3 = y + d;
-        data = node.data;
-      }
-    }
-  }
-
-  return data;
-}
-
-function tree_remove(d) {
-  if (isNaN(x = +this._x.call(null, d)) || isNaN(y = +this._y.call(null, d))) return this; // ignore invalid points
-
-  var parent,
-      node = this._root,
-      retainer,
-      previous,
-      next,
-      x0 = this._x0,
-      y0 = this._y0,
-      x1 = this._x1,
-      y1 = this._y1,
-      x,
-      y,
-      xm,
-      ym,
-      right,
-      bottom,
-      i,
-      j;
-
-  // If the tree is empty, initialize the root as a leaf.
-  if (!node) return this;
-
-  // Find the leaf node for the point.
-  // While descending, also retain the deepest parent with a non-removed sibling.
-  if (node.length) while (true) {
-    if (right = x >= (xm = (x0 + x1) / 2)) x0 = xm; else x1 = xm;
-    if (bottom = y >= (ym = (y0 + y1) / 2)) y0 = ym; else y1 = ym;
-    if (!(parent = node, node = node[i = bottom << 1 | right])) return this;
-    if (!node.length) break;
-    if (parent[(i + 1) & 3] || parent[(i + 2) & 3] || parent[(i + 3) & 3]) retainer = parent, j = i;
-  }
-
-  // Find the point to remove.
-  while (node.data !== d) if (!(previous = node, node = node.next)) return this;
-  if (next = node.next) delete node.next;
-
-  // If there are multiple coincident points, remove just the point.
-  if (previous) return (next ? previous.next = next : delete previous.next), this;
-
-  // If this is the root point, remove it.
-  if (!parent) return this._root = next, this;
-
-  // Remove this leaf.
-  next ? parent[i] = next : delete parent[i];
-
-  // If the parent now contains exactly one leaf, collapse superfluous parents.
-  if ((node = parent[0] || parent[1] || parent[2] || parent[3])
-      && node === (parent[3] || parent[2] || parent[1] || parent[0])
-      && !node.length) {
-    if (retainer) retainer[j] = node;
-    else this._root = node;
-  }
-
-  return this;
-}
-
-function removeAll(data) {
-  for (var i = 0, n = data.length; i < n; ++i) this.remove(data[i]);
-  return this;
-}
-
-function tree_root() {
-  return this._root;
-}
-
-function tree_size() {
-  var size = 0;
-  this.visit(function(node) {
-    if (!node.length) do ++size; while (node = node.next)
-  });
-  return size;
-}
-
-function tree_visit(callback) {
-  var quads = [], q, node = this._root, child, x0, y0, x1, y1;
-  if (node) quads.push(new Quad(node, this._x0, this._y0, this._x1, this._y1));
-  while (q = quads.pop()) {
-    if (!callback(node = q.node, x0 = q.x0, y0 = q.y0, x1 = q.x1, y1 = q.y1) && node.length) {
-      var xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
-      if (child = node[3]) quads.push(new Quad(child, xm, ym, x1, y1));
-      if (child = node[2]) quads.push(new Quad(child, x0, ym, xm, y1));
-      if (child = node[1]) quads.push(new Quad(child, xm, y0, x1, ym));
-      if (child = node[0]) quads.push(new Quad(child, x0, y0, xm, ym));
-    }
-  }
-  return this;
-}
-
-function tree_visitAfter(callback) {
-  var quads = [], next = [], q;
-  if (this._root) quads.push(new Quad(this._root, this._x0, this._y0, this._x1, this._y1));
-  while (q = quads.pop()) {
-    var node = q.node;
-    if (node.length) {
-      var child, x0 = q.x0, y0 = q.y0, x1 = q.x1, y1 = q.y1, xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
-      if (child = node[0]) quads.push(new Quad(child, x0, y0, xm, ym));
-      if (child = node[1]) quads.push(new Quad(child, xm, y0, x1, ym));
-      if (child = node[2]) quads.push(new Quad(child, x0, ym, xm, y1));
-      if (child = node[3]) quads.push(new Quad(child, xm, ym, x1, y1));
-    }
-    next.push(q);
-  }
-  while (q = next.pop()) {
-    callback(q.node, q.x0, q.y0, q.x1, q.y1);
-  }
-  return this;
-}
-
-function defaultX(d) {
-  return d[0];
-}
-
-function tree_x(_) {
-  return arguments.length ? (this._x = _, this) : this._x;
-}
-
-function defaultY(d) {
-  return d[1];
-}
-
-function tree_y(_) {
-  return arguments.length ? (this._y = _, this) : this._y;
-}
-
-function quadtree(nodes, x, y) {
-  var tree = new Quadtree(x == null ? defaultX : x, y == null ? defaultY : y, NaN, NaN, NaN, NaN);
-  return nodes == null ? tree : tree.addAll(nodes);
-}
-
-function Quadtree(x, y, x0, y0, x1, y1) {
-  this._x = x;
-  this._y = y;
-  this._x0 = x0;
-  this._y0 = y0;
-  this._x1 = x1;
-  this._y1 = y1;
-  this._root = undefined;
-}
-
-function leaf_copy(leaf) {
-  var copy = {data: leaf.data}, next = copy;
-  while (leaf = leaf.next) next = next.next = {data: leaf.data};
-  return copy;
-}
-
-var treeProto = quadtree.prototype = Quadtree.prototype;
-
-treeProto.copy = function() {
-  var copy = new Quadtree(this._x, this._y, this._x0, this._y0, this._x1, this._y1),
-      node = this._root,
-      nodes,
-      child;
-
-  if (!node) return copy;
-
-  if (!node.length) return copy._root = leaf_copy(node), copy;
-
-  nodes = [{source: node, target: copy._root = new Array(4)}];
-  while (node = nodes.pop()) {
-    for (var i = 0; i < 4; ++i) {
-      if (child = node.source[i]) {
-        if (child.length) nodes.push({source: child, target: node.target[i] = new Array(4)});
-        else node.target[i] = leaf_copy(child);
-      }
-    }
-  }
-
-  return copy;
-};
-
-treeProto.add = tree_add;
-treeProto.addAll = addAll;
-treeProto.cover = tree_cover;
-treeProto.data = tree_data;
-treeProto.extent = tree_extent;
-treeProto.find = tree_find;
-treeProto.remove = tree_remove;
-treeProto.removeAll = removeAll;
-treeProto.root = tree_root;
-treeProto.size = tree_size;
-treeProto.visit = tree_visit;
-treeProto.visitAfter = tree_visitAfter;
-treeProto.x = tree_x;
-treeProto.y = tree_y;
-
-function constant$3(x) {
-  return function() {
-    return x;
-  };
-}
-
-function jiggle(random) {
-  return (random() - 0.5) * 1e-6;
-}
-
-function index$1(d) {
-  return d.index;
-}
-
-function find$1(nodeById, nodeId) {
-  var node = nodeById.get(nodeId);
-  if (!node) throw new Error("node not found: " + nodeId);
-  return node;
-}
-
-function link(links) {
-  var id = index$1,
-      strength = defaultStrength,
-      strengths,
-      distance = constant$3(30),
-      distances,
-      nodes,
-      count,
-      bias,
-      random,
-      iterations = 1;
-
-  if (links == null) links = [];
-
-  function defaultStrength(link) {
-    return 1 / Math.min(count[link.source.index], count[link.target.index]);
-  }
-
-  function force(alpha) {
-    for (var k = 0, n = links.length; k < iterations; ++k) {
-      for (var i = 0, link, source, target, x, y, l, b; i < n; ++i) {
-        link = links[i], source = link.source, target = link.target;
-        x = target.x + target.vx - source.x - source.vx || jiggle(random);
-        y = target.y + target.vy - source.y - source.vy || jiggle(random);
-        l = Math.sqrt(x * x + y * y);
-        l = (l - distances[i]) / l * alpha * strengths[i];
-        x *= l, y *= l;
-        target.vx -= x * (b = bias[i]);
-        target.vy -= y * b;
-        source.vx += x * (b = 1 - b);
-        source.vy += y * b;
-      }
-    }
-  }
-
-  function initialize() {
-    if (!nodes) return;
-
-    var i,
-        n = nodes.length,
-        m = links.length,
-        nodeById = new Map(nodes.map((d, i) => [id(d, i, nodes), d])),
-        link;
-
-    for (i = 0, count = new Array(n); i < m; ++i) {
-      link = links[i], link.index = i;
-      if (typeof link.source !== "object") link.source = find$1(nodeById, link.source);
-      if (typeof link.target !== "object") link.target = find$1(nodeById, link.target);
-      count[link.source.index] = (count[link.source.index] || 0) + 1;
-      count[link.target.index] = (count[link.target.index] || 0) + 1;
-    }
-
-    for (i = 0, bias = new Array(m); i < m; ++i) {
-      link = links[i], bias[i] = count[link.source.index] / (count[link.source.index] + count[link.target.index]);
-    }
-
-    strengths = new Array(m), initializeStrength();
-    distances = new Array(m), initializeDistance();
-  }
-
-  function initializeStrength() {
-    if (!nodes) return;
-
-    for (var i = 0, n = links.length; i < n; ++i) {
-      strengths[i] = +strength(links[i], i, links);
-    }
-  }
-
-  function initializeDistance() {
-    if (!nodes) return;
-
-    for (var i = 0, n = links.length; i < n; ++i) {
-      distances[i] = +distance(links[i], i, links);
-    }
-  }
-
-  force.initialize = function(_nodes, _random) {
-    nodes = _nodes;
-    random = _random;
-    initialize();
-  };
-
-  force.links = function(_) {
-    return arguments.length ? (links = _, initialize(), force) : links;
-  };
-
-  force.id = function(_) {
-    return arguments.length ? (id = _, force) : id;
-  };
-
-  force.iterations = function(_) {
-    return arguments.length ? (iterations = +_, force) : iterations;
-  };
-
-  force.strength = function(_) {
-    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$3(+_), initializeStrength(), force) : strength;
-  };
-
-  force.distance = function(_) {
-    return arguments.length ? (distance = typeof _ === "function" ? _ : constant$3(+_), initializeDistance(), force) : distance;
-  };
-
-  return force;
-}
-
-// https://en.wikipedia.org/wiki/Linear_congruential_generator#Parameters_in_common_use
-const a = 1664525;
-const c = 1013904223;
-const m = 4294967296; // 2^32
-
-function lcg() {
-  let s = 1;
-  return () => (s = (a * s + c) % m) / m;
-}
-
-function x(d) {
-  return d.x;
-}
-
-function y(d) {
-  return d.y;
-}
-
-var initialRadius = 10,
-    initialAngle = Math.PI * (3 - Math.sqrt(5));
-
-function simulation(nodes) {
-  var simulation,
-      alpha = 1,
-      alphaMin = 0.001,
-      alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
-      alphaTarget = 0,
-      velocityDecay = 0.6,
-      forces = new Map(),
-      stepper = timer(step),
-      event = dispatch("tick", "end"),
-      random = lcg();
-
-  if (nodes == null) nodes = [];
-
-  function step() {
-    tick();
-    event.call("tick", simulation);
-    if (alpha < alphaMin) {
-      stepper.stop();
-      event.call("end", simulation);
-    }
-  }
-
-  function tick(iterations) {
-    var i, n = nodes.length, node;
-
-    if (iterations === undefined) iterations = 1;
-
-    for (var k = 0; k < iterations; ++k) {
-      alpha += (alphaTarget - alpha) * alphaDecay;
-
-      forces.forEach(function(force) {
-        force(alpha);
-      });
-
-      for (i = 0; i < n; ++i) {
-        node = nodes[i];
-        if (node.fx == null) node.x += node.vx *= velocityDecay;
-        else node.x = node.fx, node.vx = 0;
-        if (node.fy == null) node.y += node.vy *= velocityDecay;
-        else node.y = node.fy, node.vy = 0;
-      }
-    }
-
-    return simulation;
-  }
-
-  function initializeNodes() {
-    for (var i = 0, n = nodes.length, node; i < n; ++i) {
-      node = nodes[i], node.index = i;
-      if (node.fx != null) node.x = node.fx;
-      if (node.fy != null) node.y = node.fy;
-      if (isNaN(node.x) || isNaN(node.y)) {
-        var radius = initialRadius * Math.sqrt(0.5 + i), angle = i * initialAngle;
-        node.x = radius * Math.cos(angle);
-        node.y = radius * Math.sin(angle);
-      }
-      if (isNaN(node.vx) || isNaN(node.vy)) {
-        node.vx = node.vy = 0;
-      }
-    }
-  }
-
-  function initializeForce(force) {
-    if (force.initialize) force.initialize(nodes, random);
-    return force;
-  }
-
-  initializeNodes();
-
-  return simulation = {
-    tick: tick,
-
-    restart: function() {
-      return stepper.restart(step), simulation;
-    },
-
-    stop: function() {
-      return stepper.stop(), simulation;
-    },
-
-    nodes: function(_) {
-      return arguments.length ? (nodes = _, initializeNodes(), forces.forEach(initializeForce), simulation) : nodes;
-    },
-
-    alpha: function(_) {
-      return arguments.length ? (alpha = +_, simulation) : alpha;
-    },
-
-    alphaMin: function(_) {
-      return arguments.length ? (alphaMin = +_, simulation) : alphaMin;
-    },
-
-    alphaDecay: function(_) {
-      return arguments.length ? (alphaDecay = +_, simulation) : +alphaDecay;
-    },
-
-    alphaTarget: function(_) {
-      return arguments.length ? (alphaTarget = +_, simulation) : alphaTarget;
-    },
-
-    velocityDecay: function(_) {
-      return arguments.length ? (velocityDecay = 1 - _, simulation) : 1 - velocityDecay;
-    },
-
-    randomSource: function(_) {
-      return arguments.length ? (random = _, forces.forEach(initializeForce), simulation) : random;
-    },
-
-    force: function(name, _) {
-      return arguments.length > 1 ? ((_ == null ? forces.delete(name) : forces.set(name, initializeForce(_))), simulation) : forces.get(name);
-    },
-
-    find: function(x, y, radius) {
-      var i = 0,
-          n = nodes.length,
-          dx,
-          dy,
-          d2,
-          node,
-          closest;
-
-      if (radius == null) radius = Infinity;
-      else radius *= radius;
-
-      for (i = 0; i < n; ++i) {
-        node = nodes[i];
-        dx = x - node.x;
-        dy = y - node.y;
-        d2 = dx * dx + dy * dy;
-        if (d2 < radius) closest = node, radius = d2;
-      }
-
-      return closest;
-    },
-
-    on: function(name, _) {
-      return arguments.length > 1 ? (event.on(name, _), simulation) : event.on(name);
-    }
-  };
-}
-
-function manyBody() {
-  var nodes,
-      node,
-      random,
-      alpha,
-      strength = constant$3(-30),
-      strengths,
-      distanceMin2 = 1,
-      distanceMax2 = Infinity,
-      theta2 = 0.81;
-
-  function force(_) {
-    var i, n = nodes.length, tree = quadtree(nodes, x, y).visitAfter(accumulate);
-    for (alpha = _, i = 0; i < n; ++i) node = nodes[i], tree.visit(apply);
-  }
-
-  function initialize() {
-    if (!nodes) return;
-    var i, n = nodes.length, node;
-    strengths = new Array(n);
-    for (i = 0; i < n; ++i) node = nodes[i], strengths[node.index] = +strength(node, i, nodes);
-  }
-
-  function accumulate(quad) {
-    var strength = 0, q, c, weight = 0, x, y, i;
-
-    // For internal nodes, accumulate forces from child quadrants.
-    if (quad.length) {
-      for (x = y = i = 0; i < 4; ++i) {
-        if ((q = quad[i]) && (c = Math.abs(q.value))) {
-          strength += q.value, weight += c, x += c * q.x, y += c * q.y;
-        }
-      }
-      quad.x = x / weight;
-      quad.y = y / weight;
-    }
-
-    // For leaf nodes, accumulate forces from coincident quadrants.
-    else {
-      q = quad;
-      q.x = q.data.x;
-      q.y = q.data.y;
-      do strength += strengths[q.data.index];
-      while (q = q.next);
-    }
-
-    quad.value = strength;
-  }
-
-  function apply(quad, x1, _, x2) {
-    if (!quad.value) return true;
-
-    var x = quad.x - node.x,
-        y = quad.y - node.y,
-        w = x2 - x1,
-        l = x * x + y * y;
-
-    // Apply the Barnes-Hut approximation if possible.
-    // Limit forces for very close nodes; randomize direction if coincident.
-    if (w * w / theta2 < l) {
-      if (l < distanceMax2) {
-        if (x === 0) x = jiggle(random), l += x * x;
-        if (y === 0) y = jiggle(random), l += y * y;
-        if (l < distanceMin2) l = Math.sqrt(distanceMin2 * l);
-        node.vx += x * quad.value * alpha / l;
-        node.vy += y * quad.value * alpha / l;
-      }
-      return true;
-    }
-
-    // Otherwise, process points directly.
-    else if (quad.length || l >= distanceMax2) return;
-
-    // Limit forces for very close nodes; randomize direction if coincident.
-    if (quad.data !== node || quad.next) {
-      if (x === 0) x = jiggle(random), l += x * x;
-      if (y === 0) y = jiggle(random), l += y * y;
-      if (l < distanceMin2) l = Math.sqrt(distanceMin2 * l);
-    }
-
-    do if (quad.data !== node) {
-      w = strengths[quad.data.index] * alpha / l;
-      node.vx += x * w;
-      node.vy += y * w;
-    } while (quad = quad.next);
-  }
-
-  force.initialize = function(_nodes, _random) {
-    nodes = _nodes;
-    random = _random;
-    initialize();
-  };
-
-  force.strength = function(_) {
-    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$3(+_), initialize(), force) : strength;
-  };
-
-  force.distanceMin = function(_) {
-    return arguments.length ? (distanceMin2 = _ * _, force) : Math.sqrt(distanceMin2);
-  };
-
-  force.distanceMax = function(_) {
-    return arguments.length ? (distanceMax2 = _ * _, force) : Math.sqrt(distanceMax2);
-  };
-
-  force.theta = function(_) {
-    return arguments.length ? (theta2 = _ * _, force) : Math.sqrt(theta2);
-  };
-
-  return force;
-}
-
-function x$1(x) {
-  var strength = constant$3(0.1),
-      nodes,
-      strengths,
-      xz;
-
-  if (typeof x !== "function") x = constant$3(x == null ? 0 : +x);
-
-  function force(alpha) {
-    for (var i = 0, n = nodes.length, node; i < n; ++i) {
-      node = nodes[i], node.vx += (xz[i] - node.x) * strengths[i] * alpha;
-    }
-  }
-
-  function initialize() {
-    if (!nodes) return;
-    var i, n = nodes.length;
-    strengths = new Array(n);
-    xz = new Array(n);
-    for (i = 0; i < n; ++i) {
-      strengths[i] = isNaN(xz[i] = +x(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
-    }
-  }
-
-  force.initialize = function(_) {
-    nodes = _;
-    initialize();
-  };
-
-  force.strength = function(_) {
-    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$3(+_), initialize(), force) : strength;
-  };
-
-  force.x = function(_) {
-    return arguments.length ? (x = typeof _ === "function" ? _ : constant$3(+_), initialize(), force) : x;
-  };
-
-  return force;
-}
-
-function y$1(y) {
-  var strength = constant$3(0.1),
-      nodes,
-      strengths,
-      yz;
-
-  if (typeof y !== "function") y = constant$3(y == null ? 0 : +y);
-
-  function force(alpha) {
-    for (var i = 0, n = nodes.length, node; i < n; ++i) {
-      node = nodes[i], node.vy += (yz[i] - node.y) * strengths[i] * alpha;
-    }
-  }
-
-  function initialize() {
-    if (!nodes) return;
-    var i, n = nodes.length;
-    strengths = new Array(n);
-    yz = new Array(n);
-    for (i = 0; i < n; ++i) {
-      strengths[i] = isNaN(yz[i] = +y(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
-    }
-  }
-
-  force.initialize = function(_) {
-    nodes = _;
-    initialize();
-  };
-
-  force.strength = function(_) {
-    return arguments.length ? (strength = typeof _ === "function" ? _ : constant$3(+_), initialize(), force) : strength;
-  };
-
-  force.y = function(_) {
-    return arguments.length ? (y = typeof _ === "function" ? _ : constant$3(+_), initialize(), force) : y;
-  };
-
-  return force;
-}
-
 var constant$4 = x => () => x;
 
 function ZoomEvent(type, {
@@ -4575,743 +5312,6 @@ function zoom() {
   };
 
   return zoom;
-}
-
-function createCommonjsModule(fn) {
-  var module = { exports: {} };
-	return fn(module, module.exports), module.exports;
-}
-
-var eventemitter3 = createCommonjsModule(function (module) {
-
-var has = Object.prototype.hasOwnProperty
-  , prefix = '~';
-
-/**
- * Constructor to create a storage for our `EE` objects.
- * An `Events` instance is a plain object whose properties are event names.
- *
- * @constructor
- * @private
- */
-function Events() {}
-
-//
-// We try to not inherit from `Object.prototype`. In some engines creating an
-// instance in this way is faster than calling `Object.create(null)` directly.
-// If `Object.create(null)` is not supported we prefix the event names with a
-// character to make sure that the built-in object properties are not
-// overridden or used as an attack vector.
-//
-if (Object.create) {
-  Events.prototype = Object.create(null);
-
-  //
-  // This hack is needed because the `__proto__` property is still inherited in
-  // some old browsers like Android 4, iPhone 5.1, Opera 11 and Safari 5.
-  //
-  if (!new Events().__proto__) prefix = false;
-}
-
-/**
- * Representation of a single event listener.
- *
- * @param {Function} fn The listener function.
- * @param {*} context The context to invoke the listener with.
- * @param {Boolean} [once=false] Specify if the listener is a one-time listener.
- * @constructor
- * @private
- */
-function EE(fn, context, once) {
-  this.fn = fn;
-  this.context = context;
-  this.once = once || false;
-}
-
-/**
- * Add a listener for a given event.
- *
- * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
- * @param {(String|Symbol)} event The event name.
- * @param {Function} fn The listener function.
- * @param {*} context The context to invoke the listener with.
- * @param {Boolean} once Specify if the listener is a one-time listener.
- * @returns {EventEmitter}
- * @private
- */
-function addListener(emitter, event, fn, context, once) {
-  if (typeof fn !== 'function') {
-    throw new TypeError('The listener must be a function');
-  }
-
-  var listener = new EE(fn, context || emitter, once)
-    , evt = prefix ? prefix + event : event;
-
-  if (!emitter._events[evt]) emitter._events[evt] = listener, emitter._eventsCount++;
-  else if (!emitter._events[evt].fn) emitter._events[evt].push(listener);
-  else emitter._events[evt] = [emitter._events[evt], listener];
-
-  return emitter;
-}
-
-/**
- * Clear event by name.
- *
- * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
- * @param {(String|Symbol)} evt The Event name.
- * @private
- */
-function clearEvent(emitter, evt) {
-  if (--emitter._eventsCount === 0) emitter._events = new Events();
-  else delete emitter._events[evt];
-}
-
-/**
- * Minimal `EventEmitter` interface that is molded against the Node.js
- * `EventEmitter` interface.
- *
- * @constructor
- * @public
- */
-function EventEmitter() {
-  this._events = new Events();
-  this._eventsCount = 0;
-}
-
-/**
- * Return an array listing the events for which the emitter has registered
- * listeners.
- *
- * @returns {Array}
- * @public
- */
-EventEmitter.prototype.eventNames = function eventNames() {
-  var names = []
-    , events
-    , name;
-
-  if (this._eventsCount === 0) return names;
-
-  for (name in (events = this._events)) {
-    if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
-  }
-
-  if (Object.getOwnPropertySymbols) {
-    return names.concat(Object.getOwnPropertySymbols(events));
-  }
-
-  return names;
-};
-
-/**
- * Return the listeners registered for a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @returns {Array} The registered listeners.
- * @public
- */
-EventEmitter.prototype.listeners = function listeners(event) {
-  var evt = prefix ? prefix + event : event
-    , handlers = this._events[evt];
-
-  if (!handlers) return [];
-  if (handlers.fn) return [handlers.fn];
-
-  for (var i = 0, l = handlers.length, ee = new Array(l); i < l; i++) {
-    ee[i] = handlers[i].fn;
-  }
-
-  return ee;
-};
-
-/**
- * Return the number of listeners listening to a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @returns {Number} The number of listeners.
- * @public
- */
-EventEmitter.prototype.listenerCount = function listenerCount(event) {
-  var evt = prefix ? prefix + event : event
-    , listeners = this._events[evt];
-
-  if (!listeners) return 0;
-  if (listeners.fn) return 1;
-  return listeners.length;
-};
-
-/**
- * Calls each of the listeners registered for a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @returns {Boolean} `true` if the event had listeners, else `false`.
- * @public
- */
-EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
-  var evt = prefix ? prefix + event : event;
-
-  if (!this._events[evt]) return false;
-
-  var listeners = this._events[evt]
-    , len = arguments.length
-    , args
-    , i;
-
-  if (listeners.fn) {
-    if (listeners.once) this.removeListener(event, listeners.fn, undefined, true);
-
-    switch (len) {
-      case 1: return listeners.fn.call(listeners.context), true;
-      case 2: return listeners.fn.call(listeners.context, a1), true;
-      case 3: return listeners.fn.call(listeners.context, a1, a2), true;
-      case 4: return listeners.fn.call(listeners.context, a1, a2, a3), true;
-      case 5: return listeners.fn.call(listeners.context, a1, a2, a3, a4), true;
-      case 6: return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
-    }
-
-    for (i = 1, args = new Array(len -1); i < len; i++) {
-      args[i - 1] = arguments[i];
-    }
-
-    listeners.fn.apply(listeners.context, args);
-  } else {
-    var length = listeners.length
-      , j;
-
-    for (i = 0; i < length; i++) {
-      if (listeners[i].once) this.removeListener(event, listeners[i].fn, undefined, true);
-
-      switch (len) {
-        case 1: listeners[i].fn.call(listeners[i].context); break;
-        case 2: listeners[i].fn.call(listeners[i].context, a1); break;
-        case 3: listeners[i].fn.call(listeners[i].context, a1, a2); break;
-        case 4: listeners[i].fn.call(listeners[i].context, a1, a2, a3); break;
-        default:
-          if (!args) for (j = 1, args = new Array(len -1); j < len; j++) {
-            args[j - 1] = arguments[j];
-          }
-
-          listeners[i].fn.apply(listeners[i].context, args);
-      }
-    }
-  }
-
-  return true;
-};
-
-/**
- * Add a listener for a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @param {Function} fn The listener function.
- * @param {*} [context=this] The context to invoke the listener with.
- * @returns {EventEmitter} `this`.
- * @public
- */
-EventEmitter.prototype.on = function on(event, fn, context) {
-  return addListener(this, event, fn, context, false);
-};
-
-/**
- * Add a one-time listener for a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @param {Function} fn The listener function.
- * @param {*} [context=this] The context to invoke the listener with.
- * @returns {EventEmitter} `this`.
- * @public
- */
-EventEmitter.prototype.once = function once(event, fn, context) {
-  return addListener(this, event, fn, context, true);
-};
-
-/**
- * Remove the listeners of a given event.
- *
- * @param {(String|Symbol)} event The event name.
- * @param {Function} fn Only remove the listeners that match this function.
- * @param {*} context Only remove the listeners that have this context.
- * @param {Boolean} once Only remove one-time listeners.
- * @returns {EventEmitter} `this`.
- * @public
- */
-EventEmitter.prototype.removeListener = function removeListener(event, fn, context, once) {
-  var evt = prefix ? prefix + event : event;
-
-  if (!this._events[evt]) return this;
-  if (!fn) {
-    clearEvent(this, evt);
-    return this;
-  }
-
-  var listeners = this._events[evt];
-
-  if (listeners.fn) {
-    if (
-      listeners.fn === fn &&
-      (!once || listeners.once) &&
-      (!context || listeners.context === context)
-    ) {
-      clearEvent(this, evt);
-    }
-  } else {
-    for (var i = 0, events = [], length = listeners.length; i < length; i++) {
-      if (
-        listeners[i].fn !== fn ||
-        (once && !listeners[i].once) ||
-        (context && listeners[i].context !== context)
-      ) {
-        events.push(listeners[i]);
-      }
-    }
-
-    //
-    // Reset the array, or remove it completely if we have no more listeners.
-    //
-    if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
-    else clearEvent(this, evt);
-  }
-
-  return this;
-};
-
-/**
- * Remove all listeners, or those of the specified event.
- *
- * @param {(String|Symbol)} [event] The event name.
- * @returns {EventEmitter} `this`.
- * @public
- */
-EventEmitter.prototype.removeAllListeners = function removeAllListeners(event) {
-  var evt;
-
-  if (event) {
-    evt = prefix ? prefix + event : event;
-    if (this._events[evt]) clearEvent(this, evt);
-  } else {
-    this._events = new Events();
-    this._eventsCount = 0;
-  }
-
-  return this;
-};
-
-//
-// Alias methods names because people roll like that.
-//
-EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
-EventEmitter.prototype.addListener = EventEmitter.prototype.on;
-
-//
-// Expose the prefix.
-//
-EventEmitter.prefixed = prefix;
-
-//
-// Allow `EventEmitter` to be imported as module namespace.
-//
-EventEmitter.EventEmitter = EventEmitter;
-
-//
-// Expose the module.
-//
-{
-  module.exports = EventEmitter;
-}
-});
-
-class D3Renderer extends eventemitter3 {
-
-    constructor({
-        svg
-    } = {}) {
-        super();
-
-        if (svg && svg instanceof SVGElement) {
-            this.rootSelection = select(svg);
-        } else {
-            this.rootSelection = create('svg');
-        }
-
-        this.rootSelection
-            .classed('network-graph', true)
-            .attr('xmlns', 'http://www.w3.org/2000/svg')
-            .attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-
-        this.rootSelection.append('defs');
-        this._gSelection = this.rootSelection
-            .append('g')
-            .classed('canvas', true);
-    }
-
-    setViewBox(x, y, width, height) {
-        this.rootSelection.attr('viewBox', [x, y, width, height]);
-    }
-
-    setSize(width, height) {
-        this.rootSelection
-            .attr('width', width)
-            .attr('height', height);
-    }
-
-    rootElement() {
-        return this.rootSelection.node();
-    }
-
-    render(graph) {
-
-        // console.log('graph render');
-
-        const nodes = graph.getNodes();
-        const edges = graph.getEdges();
-
-        this._gSelection
-            .selectAll('g.edge')
-            .data(edges, d => d.data.id)
-            .join(
-                enter => enter.append('g')
-                    .classed('edge', true)
-                    .each(function(edge) {
-                        // console.log('create edge');
-                        edge.view.create(edge.data, select(this));
-                    })
-                    .call((enter) => {
-                        this.emit('createdEdge', enter);
-                    })
-            )
-            .each(function(edge) {
-                // console.log('update edge');
-                edge.view.update(edge.data, select(this));
-            });
-
-        this._gSelection
-            .selectAll('g.node')
-            .data(nodes, d => d.data.id)
-            .join(
-                enter => enter.append('g')
-                    .classed('node', true)
-                    .each(function(node) {
-                        // console.log('create node');
-                        node.view.create(node.data, select(this));
-                    })
-                    .call((enter) => {
-                        this.emit('createdNode', enter);
-                    })
-            )
-            .each(function(node) {
-                // console.log('update node');
-                node.view.update(node.data, select(this));
-            });
-
-    }
-
-}
-
-class Object$1 extends eventemitter3 {
-
-    constructor() {
-        super();
-        this._children = [];
-        this._parent = null;
-    }
-
-    addChild(child) {
-        if (child) {
-            this._children.push(child);
-            child._parent = this;
-        }
-    }
-
-    prependChild(child) {
-        if (child) {
-            this._children.unshift(child);
-            child._parent = this;
-        }
-    }
-
-    removeChild(child) {
-        const index = this._children.findIndex(child);
-        if (index > -1) {
-            const child = this._children[index];
-            child._parent = null;
-            this._children.splice(index, 1);
-        }
-    }
-
-    filterChild(callback) {
-        const children = [];
-        this.traverse(child => {
-            if (callback(child) === true) children.push(child);
-        });
-        return children;
-    }
-
-    traverse(callback) {
-        this._children.forEach(child => {
-            callback(child);
-            if (child.traverse) child.traverse(callback);
-        });
-    }
-
-    children() {
-        return this._children;
-    }
-
-    removeAllChildren() {
-        this._children = [];
-    }
-
-}
-
-function getId(object) {
-    return typeof object === 'string' ? object : object.id;
-}
-
-class Graph extends Object$1 {
-
-    type = 'graph'
-
-    constructor(...args) {
-        super(...args);
-
-        this.transportUpdateNodeEvent = (e) => this.emit('updateNode', { type: 'updatenode', target: e.node });
-        this.transportUpdateEdgeEvent = (e) => this.emit('updateEdge', { type: 'updateedge', target: e.edge });
-    }
-
-    addNode(node) {
-        super.addChild(node);
-        node.on('update', this.transportUpdateNodeEvent);
-    }
-
-    getNodeById(id) {
-        let node;
-        this.traverse((child) => {
-            if (node) return;
-            if (child.type === 'node' && child.data.id === id) node = child;
-        });
-        return node;
-    }
-
-    getNodes() {
-        return this.filterChild(d => d.type === 'node');
-    }
-
-    eachNode(callback) {
-        this.traverse(child => {
-            if (child.type === 'node') {
-                callback(child);
-            }
-        });
-    }
-
-    removeNode() {}
-
-    addEdges(edges) {
-        edges.forEach(edge => {
-            super.prependChild(edge);
-            edge.on('update', this.transportUpdateEdgeEvent);
-        });
-        this._updateEdges();
-    }
-
-    // 添加多条边的情况推荐使用addEdges。
-    // 因为多次调用addEdge方法会多次调用_updateEdges，产生冗余计算。
-    addEdge(edge) {
-        super.prependChild(edge);
-        edge.on('update', this.transportUpdateEdgeEvent);
-        this._updateEdges();
-    }
-
-    getEdgesBySourceAndTarget(sourceId, targetId) {
-        return this.filterChild(child =>
-            child.type === 'edge' &&
-            getId(child.data.source) === sourceId &&
-            getId(child.data.target) === targetId
-        );
-    }
-
-    getEdges() {
-        return this.filterChild(d => d.type === 'edge');
-    }
-
-    removeEdge() {}
-
-    eachEdge(callback) {
-        this.traverse(child => {
-            if (child.type === 'edge') {
-                callback(child);
-            }
-        });
-    }
-
-    _updateEdges() {
-        const edges = this.getEdges();
-        const edgeMap = {};
-
-        edges.forEach(edge => {
-            const edgeData = edge.data;
-            // 统计边信息
-            const sourceId = getId(edgeData.source);
-            const targetId = getId(edgeData.target);
-            const direction = `${sourceId}-${targetId}`;
-            const directionAlt = `${targetId}-${sourceId}`;
-            if (edgeMap[direction] === undefined) edgeMap[direction] = 0;
-            if (edgeMap[directionAlt] === undefined) edgeMap[directionAlt] = 0;
-            // sameIndex需要同时考虑同向和反向边
-            // 比如同向边数量为2、反向边数量为1，那么新的sameIndex应该是4
-            if (direction === directionAlt) {
-                edgeData.sameIndex = ++edgeMap[direction];
-            } else {
-                edgeData.sameIndex = ++edgeMap[direction] + edgeMap[directionAlt];
-            }
-        });
-
-        edges.forEach((edge, i) => {
-            const edgeData = edge.data;
-            const sourceId = getId(edgeData.source);
-            const targetId = getId(edgeData.target);
-            const same = edgeMap[`${sourceId}-${targetId}`];
-            const sameAlt = edgeMap[`${targetId}-${sourceId}`];
-
-            edgeData.sameTotal = same + sameAlt;
-            edgeData.sameTotalHalf = edgeData.sameTotal / 2;
-            edgeData.sameUneven = edgeData.sameTotal % 2 !== 0;
-            edgeData.sameMiddleLink = edgeData.sameUneven === true && Math.ceil(edgeData.sameTotalHalf) === edgeData.sameIndex;
-            edgeData.sameLowerHalf = edgeData.sameIndex > edgeData.sameTotalHalf;
-            edgeData.sameIndexCorrected = edgeData.sameLowerHalf ? (Math.ceil(edgeData.sameTotalHalf) - edgeData.sameIndex) : edgeData.sameIndex;
-        });
-    }
-
-}
-
-class Node extends eventemitter3 {
-
-    type = 'node'
-
-    constructor(data, view) {
-        super();
-        const self = this;
-        this.data = new Proxy({ 
-            size: 15,
-            ...data
-        }, {
-            get: function (obj, key) {
-                return obj[key];
-            },
-            set: function (obj, key, newValue) {
-                obj[key] = newValue;
-                self.emit('update', { type: 'update', node: self });
-                return true;
-            }
-        });
-        this.view = view;
-    }
-
-}
-
-class Edge extends eventemitter3 {
-
-    type = 'edge'
-    
-    // constructor({ id, source, target, label }) {
-    //     this.id = id;
-    //     this.source = source;
-    //     this.target = target;
-    //     this.label = label;
-    // }
-
-    constructor(data, view) {
-        super();
-        const self = this;
-        this.data = new Proxy(data, {
-            get: function (obj, key) {
-                return obj[key];
-            },
-            set: function (obj, key, newValue) {
-                obj[key] = newValue;
-                self.emit('update', { type: 'update', edge: self });
-                return true;
-            }
-        });
-        this.view = view;
-    }
-
-}
-
-class Layout extends eventemitter3 {
-
-    // constructor(graph) {
-    //     super();
-    //     this.graph = graph;
-    // }
-
-    data() {}
-
-    start() {}
-    
-    resume() {}
-
-    stop() {}
-
-}
-
-class ForceLayout extends Layout {
-
-    constructor({
-        linkDistance = 200,
-        manyBodyStrength = -500,
-        manyBodyTheta = 0.9,
-        xStrength = 0.05,
-        yStrength = 0.05,
-    }) {
-        super();
-        
-        this.linkForce = link().id(d => d.id).distance(linkDistance);
-        this.manyBodyForce = manyBody().strength(manyBodyStrength).theta(manyBodyTheta);
-        this.xForce = x$1(0).strength(xStrength);
-        this.yForce = y$1(0).strength(yStrength);
-
-        this.forceSimulation = simulation();
-
-        // 不要自动启动布局
-        this.forceSimulation.stop()
-            // 配置排斥力，引力，连接力
-            .force('edge', this.linkForce)
-            .force('change', this.manyBodyForce)
-            .force('x', this.xForce)
-            .force('y', this.yForce);
-
-        this.forceSimulation.on('tick', (...args) => this.emit('tick', ...args));
-        this.forceSimulation.on('end', (...args) => this.emit('end', ...args));
-
-    }
-
-    data({ nodes, edges }) {
-        this.reset();
-        this.forceSimulation.nodes(nodes);
-        this.linkForce.links(edges);
-    }
-
-    // 重置状态
-    reset() {
-        this.forceSimulation.alpha(1);
-    }
-
-    start() {
-        this.forceSimulation.stop();
-        this.forceSimulation.alpha(1);
-        // d3-force没有start方法，需要自己模拟
-        this.forceSimulation.restart();
-    }
-
-    resume() {
-        this.forceSimulation.restart();
-    }
-
-    stop() {
-        this.forceSimulation.stop();
-    }
-
 }
 
 class ZoomControl extends eventemitter3 {

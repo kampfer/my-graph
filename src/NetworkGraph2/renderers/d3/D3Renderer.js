@@ -1,5 +1,5 @@
-import * as d3 from 'd3';
 import EventEmitter from 'eventemitter3';
+import * as d3 from 'd3-selection';
 
 export default class D3Renderer extends EventEmitter {
 
