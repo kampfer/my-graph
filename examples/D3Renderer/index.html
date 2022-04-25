@@ -14,12 +14,43 @@
             position: fixed;
             left: 20px;
             top: 20px;
-            width: 325px;
+            width: 270px;
+        }
+        #pane-container2,
+        #pane-container3 {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 250px;
+            display: none;
+        }
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+        .loader-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.5);
+            top: 0;
+            left: 0;
+            display: none;
+            color: #fff;
         }
     </style>
 </head>
 <body>
+    <div class="loader-container">
+        <div class="loader" title="5">
+            布局中...
+        </div>
+    </div>
+    <div id="graph"></div>
     <div id="pane-container"></div>
+    <div id="pane-container2"></div>
+    <div id="pane-container3"></div>
     <script src="../lib/tweakpane-3.0.7.min.js"></script>
     <script src="../lib/lodash.min.js"></script>
     <script>
@@ -44,7 +75,11 @@
                     id,
                     label: id,
                     hidden: !settings['display node'],
-                    hideLabel: !settings['display node label']
+                    hideLabel: !settings['display node label'],
+                    color: 'black',
+                    size: 15,
+                    labelColor: '#000',
+                    activeColor: '#bbf'
                 });
             }
             for (let i = 0; i < edgeCount; i++) {
@@ -57,6 +92,10 @@
                 data.edges.push({
                     id,
                     label: id,
+                    labelColor: '#000',
+                    labelSize: 12,
+                    color: '#000',
+                    activeColor: '#bbf',
                     source: source.id,
                     target: target.id,
                     hidden: !settings['display edge'],
@@ -75,48 +114,102 @@
             'display edge arrow': true,
             'display edge label': true,
             'display node label': true,
+            linkDistance: 300,
+            manyBodyStrength: -500,
+            manyBodyTheta: 0.9,
+            centerStrength: 0.05
+        };
+
+        const curNode = {
+            ref: null,
+            position: { x: 0, y: 0 },
+            size: 0,
+            color: '#000',
+            label: '',
+            labelSize: 12,
+            labelColor: '#000'
+        };
+
+        const curEdge = {
+            ref: null,
+            label: '',
+            labelSize: 12,
+            labelColor: '#000',
+            color: '#000',
         };
     </script>
     <script type="module">
-        import { D3Renderer, Graph, Node, Edge, D3Node, D3Edge, ForceLayout, ZoomControl, DragControl } from '../../dist/graph.js';
+        import { NetworkGraph } from '../../dist/graph.js';
 
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        const renderer = new D3Renderer();
-        renderer.setSize(width, height);
-        renderer.setViewBox(-width / 2, -height / 2, width, height);
-        document.body.appendChild(renderer.domElement());
+        const loaderContainer = document.querySelector('.loader-container');
 
-        const domElement = renderer.domElement();
-        const gElement = renderer.domElement().querySelector('g');
-        const control = new ZoomControl(domElement, gElement);
-        // control.on('zoomstart', () => {
-        //     if (graph.getEdges().length + graph.getNodes().length > 2000) {
-        //         // graph.toggleEdge(false);     
-        //     }
-        // });
-
-        let graph, layout;
+        const pane2Container = document.getElementById('pane-container2');
+        const pane3Container = document.getElementById('pane-container3');
+        let graph;
         function renderRandom() {
-            const data = makeData(settings.node, settings.edge);
-
-            graph = new Graph();
-            layout = new ForceLayout(graph);
-            data.nodes.forEach(d => graph.addNode(new Node(d, D3Node)));
-            data.edges.forEach(d => graph.addEdge(new Edge(d, D3Edge)));
-            layout.data({
-                nodes: graph.getNodes().map(d => d.data),
-                edges: graph.getEdges().map(d => d.data)
+            loaderContainer.style.display = 'block';
+            setTimeout(() => {
+                if (graph) graph.destroy();
+                const data = makeData(settings.node, settings.edge);
+                graph = new NetworkGraph({
+                    container: '#graph',
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    data,
+                    layoutConfig: {
+                        linkDistance: settings.linkDistance,
+                        xStrength: settings.centerStrength,
+                        yStrength: settings.centerStrength,
+                        manyBodyStrength: settings.manyBodyStrength,
+                        manyBodyTheta: settings.manyBodyTheta
+                    }
+                });
+                graph.model.on('selectNode', ({ target }) => {
+                    pane2Container.style.display = 'unset';
+                    pane3Container.style.display = 'none';
+                    curNode.ref = target;
+                });
+                graph.model.on('selectEdge', ({ target }) => {
+                    pane3Container.style.display = 'unset';
+                    pane2Container.style.display = 'none';
+                    curEdge.ref = target;
+                });
+                graph.model.on('clearSelect', () => {
+                    curNode.ref = null;
+                    curEdge.ref = null;
+                    pane2Container.style.display = 'none';
+                    pane3Container.style.display = 'none';
+                });
+                graph.model.on('updateNode', ({ target }) => {
+                    if (curNode.ref && target.data.id === curNode.ref.data.id) {
+                        curNode.position.x = target.data.x;
+                        curNode.position.y = target.data.y;
+                        curNode.label = target.data.label;
+                        curNode.size = target.data.size;
+                        curNode.color = target.data.color;
+                        pane2.refresh();
+                    }
+                });
+                graph.model.on('updateEdge', ({ target }) => {
+                    if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
+                        curEdge.label = target.data.label;
+                        curEdge.labelColor = target.data.labelColor;
+                        curEdge.labelSize = target.data.labelSize;
+                        curEdge.color = target.data.color;
+                        pane3.refresh();
+                    }
+                });
+                loaderContainer.style.display = 'none';
             });
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-                console.log('layout tick');
-            }
-            renderer.render(graph);
-            // layout.on('tick', () => renderer.render(graph));
-            // layout.start();
+        }
 
-            const dragControl = new DragControl(renderer, graph);
+        function rerender() {
+            loaderContainer.style.display = 'block';
+            setTimeout(() => {
+                graph.layout();
+                graph.render();
+                loaderContainer.style.display = 'none';
+            });
         }
 
         const pane = new Tweakpane.Pane({
@@ -125,30 +218,118 @@
         });
 
         const folder1 = pane.addFolder({ title: '图元数量' });
-        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1 }).on('change', renderRandom);
-        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1 }).on('change', renderRandom);
+        folder1.addInput(settings, 'node', { max: 1000, min: 1, step: 1, label: '节点' }).on('change', _.debounce(renderRandom, 500));
+        folder1.addInput(settings, 'edge', { max: 3000, min: 1, step: 1, label: '边' }).on('change', _.debounce(renderRandom, 500));
 
         const folder2 = pane.addFolder({ title: '渲染' });
-        folder2.addInput(settings, 'display edge').on('change', ({ value }) => {
-            graph.getEdges().forEach(edge => edge.data.hidden = !value);
-            renderer.render(graph);
+        folder2.addInput(settings, 'display edge', { label: '显示边' }).on('change', ({ value }) => graph.toggleAllEdges(value));
+        folder2.addInput(settings, 'display edge label', { label: '显示边文字' }).on('change', ({ value }) => graph.toggleAllEdgeLabels(value));
+        folder2.addInput(settings, 'display node label', { label: '显示节点文字' }).on('change', ({ value }) => graph.toggleAllNodeLabels(value));
+
+        const folder3 = pane.addFolder({ title: '力导布局' });
+        folder3.addInput(settings, 'linkDistance', { max: 1000, min: 1, step: 1, label: '链接距离' })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.linkForce.distance(value);
+                rerender();
+            }, 500));
+        // folder3.addInput(settings, 'linkStrength')
+        //     .on('change', _debounce(() => {
+        //         graph.placer.linkForce.strength(value);
+        //         rerender();
+        //     }, 500));
+
+        folder3.addSeparator();
+        folder3.addInput(settings, 'manyBodyStrength', { max: 1000, min: -1000, step: 1, label: 'manyBody强度' })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.manyBodyForce.strength(value);
+                rerender();
+            }, 500));
+        folder3.addInput(settings, 'manyBodyTheta', { min: -10, max: 10, label: 'manyBodyTheta' })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.manyBodyForce.theta(value);
+                rerender();
+            }, 500))
+
+        folder3.addSeparator();
+        folder3.addInput(settings, 'centerStrength', { max: 1, min: 0, label: 'center强度', step: 0.01 })
+            .on('change', _.debounce(({ value }) => {
+                graph.placer.xForce.strength(value);
+                graph.placer.yForce.strength(value);
+                rerender();
+            }, 500));
+
+        folder3.addSeparator();
+        folder3.addButton({title: 'layout'}).on('click', rerender);
+
+        const pane2 = new Tweakpane.Pane({
+            container: document.getElementById('pane-container2'),
+            title: 'node属性'
+        });        
+        pane2.addInput(curNode, 'position', { label: '位置' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.x = value.x;
+                curNode.ref.data.y = value.y;
+                graph.renderer.render(graph.model);
+            }
         });
-        folder2.addInput(settings, 'display edge label').on('change', ({ value }) => {
-            graph.getEdges().forEach(edge => edge.data.hideLabel = !value);
-            renderer.render(graph);
+        pane2.addInput(curNode, 'color', { label: '颜色' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.color = value;
+                graph.renderer.render(graph.model);
+            }
         });
-        folder2.addInput(settings, 'display node label').on('change', ({ value }) => {
-            graph.getNodes().forEach(node => node.data.hideLabel = !value);
-            renderer.render(graph);
+        pane2.addInput(curNode, 'size', { min: 10, max: 30, label: '大小' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.size = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'label', { label: '文字' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.label = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.labelSize = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane2.addInput(curNode, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
+            if (curNode.ref) {
+                curNode.ref.data.labelColor = value;
+                graph.renderer.render(graph.model);
+            }
         });
 
-        pane.addButton({title: 'layout'}).on('click', () => {
-            layout.reset();
-            while(layout.forceSimulation.alpha() > layout.forceSimulation.alphaMin()) {
-                layout.forceSimulation.tick();
-                console.log('relayout tick');
+        const pane3 = new Tweakpane.Pane({
+            container: document.getElementById('pane-container3'),
+            title: 'edge属性'
+        });    
+        pane3.addInput(curEdge, 'label', { label: '文字' }).on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.label = value;
+                graph.renderer.render(graph.model);
             }
-            renderer.render(graph)
+        });
+        pane3.addInput(curEdge, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.labelSize = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane3.addInput(curEdge, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.labelColor = value;
+                graph.renderer.render(graph.model);
+            }
+        });
+        pane3.addInput(curEdge, 'color', { label: '边颜色' }).on('change', ({ value }) => {
+            if (curEdge.ref) {
+                curEdge.ref.data.color = value;
+                graph.renderer.render(graph.model);
+            }
         });
 
         renderRandom();
