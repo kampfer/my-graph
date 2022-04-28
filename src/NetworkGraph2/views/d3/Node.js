@@ -1,8 +1,13 @@
 export default {
     type: 'node',
-    create(datum, selection) {
-        selection.append('circle');
-        selection.append('text');
+    create(datum, parentSelection) {
+        parentSelection
+            .classed('node', true)
+            .attr('id', datum.id);
+
+        parentSelection.append('circle');
+        parentSelection.append('text');
+        this.update(datum, parentSelection);
     },
     update(datum, selection) {
         const x = datum.x;

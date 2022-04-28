@@ -71,10 +71,10 @@ function getNewBezierPoint(start, c1, end, r, target) {
 }
 
 function linkArc(d) {
-    let source = new Vector2(d.data.source.x, d.data.source.y);
-    let target = new Vector2(d.data.target.x, d.data.target.y);
-    let sourceSize = getNodeSize(d.data.source);
-    let targetSize = getNodeSize(d.data.target);
+    let source = new Vector2(d.source.x, d.source.y);
+    let target = new Vector2(d.target.x, d.target.y);
+    let sourceSize = getNodeSize(d.source);
+    let targetSize = getNodeSize(d.target);
 
     // 保证x坐标更小的节点是source节点
     // 这样才能保证文字是从左往右的
@@ -83,18 +83,18 @@ function linkArc(d) {
         [sourceSize, targetSize] = [targetSize, sourceSize];
     }
 
-    if (d.data.source === d.data.target) {  // 环形
+    if (d.source === d.target) {  // 环形
 
         const theta = -Math.PI / 3;
-        const r = getNodeSize(d.data.source);
+        const r = getNodeSize(d.source);
         const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
         
-        const angle = Math.PI / 12 * d.data.sameIndexCorrected;
+        const angle = Math.PI / 12 * d.sameIndexCorrected;
         const start = j.clone().rotateAround(source, -angle);
         const end = j.clone().rotateAround(target, angle);
         
         const l = 4 * r;
-        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.data.sameIndexCorrected * 2 * r);
+        const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.sameIndexCorrected * 2 * r);
         const c1 = new Vector2(
             (start.x - source.x) / ratio + source.x,
             (start.y - source.y) / ratio + source.y,
@@ -108,7 +108,7 @@ function linkArc(d) {
 
     } else {
 
-        if (d.data.sameTotal === 1 || d.data.sameMiddleLink) {  // 直线
+        if (d.sameTotal === 1 || d.sameMiddleLink) {  // 直线
             const line = new Line(source, target);
             const sourceCircle = new Circle(source, sourceSize);
             const targetCircle = new Circle(target, targetSize);
@@ -121,7 +121,7 @@ function linkArc(d) {
             }
         } else {    // 曲线
             const delta = 20;
-            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.data.sameIndexCorrected);
+            const p1 = getMiddlePointOfBezierCurve(source, target, delta * d.sameIndexCorrected);
             const c1 = getControlPointOfBezierCurve(source, p1, target);
             const p2 = getNewBezierPoint(source, c1, target, sourceSize, source);
             const p3 = getNewBezierPoint(source, c1, target, targetSize, target);
@@ -137,8 +137,12 @@ export default {
 
     type: 'edge',
 
-    create(datum, selection) {
-        selection.append('marker')
+    create(datum, parentSelection) {
+        parentSelection
+            .classed('edge', true)
+            .attr('id', datum.id);
+
+        parentSelection.append('marker')
             .attr('id', `arrow-${datum.id}`)
             .attr('class', `arrow ${datum.id}`)
             .attr('viewbox', '-10 -5 10 10')
@@ -151,19 +155,21 @@ export default {
             .append('svg:path')
             .attr('d', 'M -10,-5 L 0 ,0 L -10,5');
 
-        selection.append('path')
+        parentSelection.append('path')
             // .attr('stroke', '#000')
             .classed('edge', true)
             .attr('id', `edge-${datum.id}`)
             .attr('fill', 'none');
 
-        selection.append('text')
+        parentSelection.append('text')
             .classed('edge-label', true)
             // .classed('hidden', datum.visible === false)
             .append('textPath')
                 .attr('xlink:href', `#edge-${datum.id}`)
                 .attr('text-anchor', 'middle')
                 .attr('startOffset', '50%');
+
+        this.update(datum, parentSelection);
     },
 
     update(datum, selection) {
@@ -191,7 +197,7 @@ export default {
             pathSelection.attr('marker-end', `url(#arrow-${datum.id})`);
         }
 
-        pathSelection.attr('d', linkArc);
+        pathSelection.attr('d', linkArc(datum));
     }
 
 }
