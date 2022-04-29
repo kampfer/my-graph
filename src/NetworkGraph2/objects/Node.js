@@ -16,7 +16,8 @@ export default class Node extends EventEmitter {
             },
             set: function (obj, key, newValue) {
                 obj[key] = newValue;
-                self.emit('update', { type: 'update', node: self });
+                self.dirty = true;
+                // self.emit('update', { type: 'update', node: self });
                 return true;
             }
         });

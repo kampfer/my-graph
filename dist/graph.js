@@ -1590,7 +1590,10 @@ class D3Renderer extends eventemitter3 {
                     })
             )
             .each(function(elem) {
-                elem.view.update(elem.data, select(this));
+                if(elem.dirty) {
+                    elem.view.update(elem.data, select(this));
+                    elem.dirty = false;
+                }
             });
     }
 
@@ -1845,7 +1848,8 @@ class Node extends eventemitter3 {
             },
             set: function (obj, key, newValue) {
                 obj[key] = newValue;
-                self.emit('update', { type: 'update', node: self });
+                self.dirty = true;
+                // self.emit('update', { type: 'update', node: self });
                 return true;
             }
         });
@@ -1874,6 +1878,7 @@ class Edge extends eventemitter3 {
             },
             set: function (obj, key, newValue) {
                 obj[key] = newValue;
+                self.dirty = true;
                 self.emit('update', { type: 'update', edge: self });
                 return true;
             }
@@ -5395,8 +5400,20 @@ class DragControl extends eventemitter3 {
         };
 
         const updatePositionEndRender = function(event, d) {
+            // 更新node
             d.data.x = event.x + deltaX;
             d.data.y = event.y + deltaY;
+            // 所有与node连接的边也需要更新
+            graph.model.traverse(elem => {
+                if (elem.type === 'edge') {
+                    if (elem.data.source.id === d.data.id) {
+                        elem.dirty = true;
+                    }
+                    if (elem.data.target.id === d.data.id) {
+                        elem.dirty = true;
+                    }
+                }
+            });
             graph.renderer.render(graph.model);
         };
 
@@ -5405,7 +5422,9 @@ class DragControl extends eventemitter3 {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        graph.renderer.on('createdNode', (enter) => enter.call(d3Drag));
+        graph.renderer.on('renderElement', (enter) => {
+            if (enter.datum().type === 'node') enter.call(d3Drag);
+        });
     }
 
 }
@@ -5672,25 +5691,19 @@ class ClickSelectControl extends eventemitter3 {
                 } else if (hitElem.type === 'edge') {
                     graph.model.emit('selectEdge', { type: 'selectEdge', target: hitElem });
                 }
-                // graph.render();
+                graph.render();
             }
         };
 
-        // graph.renderer.on('createdNode', enter => enter.on('click', handleClickElement));
-        // graph.renderer.on('createdEdge', enter => enter.on('click', handleClickElement));
-        // graph.renderer.rootSelection.on('click', (e) => {
-        //     graph.model.traverse(child => {
-        //         child.data.selected = false;
-        //     });
-        //     graph.renderer.render(graph.model);
-        //     graph.model.emit('clearSelect', { type: 'clearSelect' });
-        // });
+        graph.renderer.rootSelection.on('click', (e) => {
+            graph.model.traverse(child => {
+                child.data.selected = false;
+            });
+            graph.render();
+            graph.model.emit('clearSelect', { type: 'clearSelect' });
+        });
 
         graph.renderer.on('renderElement', selection => selection.on('click', handleClickElement));
-
-        graph.renderer.rootSelection.on('click', e => {
-            console.log(e);
-        });
     }
 
 }

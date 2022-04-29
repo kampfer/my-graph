@@ -66,7 +66,10 @@ export default class D3Renderer extends EventEmitter {
                     })
             )
             .each(function(elem) {
-                elem.view.update(elem.data, d3.select(this));
+                if(elem.dirty) {
+                    elem.view.update(elem.data, d3.select(this));
+                    elem.dirty = false;
+                }
             });
     }
 
