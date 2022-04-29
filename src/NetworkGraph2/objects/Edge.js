@@ -20,6 +20,7 @@ export default class Edge extends EventEmitter {
             },
             set: function (obj, key, newValue) {
                 obj[key] = newValue;
+                self.dirty = true;
                 self.emit('update', { type: 'update', edge: self });
                 return true;
             }

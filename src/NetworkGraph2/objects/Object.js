@@ -54,4 +54,8 @@ export default class Object extends EventEmitter {
         this._children = [];
     }
 
+    eachChild(callback) {
+        this._children.forEach(child => callback(child));
+    }
+
 }

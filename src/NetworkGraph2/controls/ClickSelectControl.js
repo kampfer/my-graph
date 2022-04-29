@@ -5,12 +5,13 @@ export default class ClickSelectControl extends EventEmitter {
     constructor(graph) {
         super();
 
-        const handleClickElement = function (e, elem) {
+        const handleClickElement = function (e) {
             e.stopPropagation();
 
+            const id = e.currentTarget.id;
             let hitElem;
             graph.model.traverse(child => {
-                const hit = child.data.id === elem.data.id;
+                const hit = child.data.id === id;
                 child.data.selected = hit;
                 if (hit) {
                     hitElem = child;
@@ -27,15 +28,15 @@ export default class ClickSelectControl extends EventEmitter {
             }
         };
 
-        graph.renderer.on('createdNode', enter => enter.on('click', handleClickElement));
-        graph.renderer.on('createdEdge', enter => enter.on('click', handleClickElement));
         graph.renderer.rootSelection.on('click', (e) => {
             graph.model.traverse(child => {
                 child.data.selected = false;
             });
-            graph.renderer.render(graph.model);
+            graph.render();
             graph.model.emit('clearSelect', { type: 'clearSelect' });
         });
+
+        graph.renderer.on('renderElement', selection => selection.on('click', handleClickElement));
     }
 
 }

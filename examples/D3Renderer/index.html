@@ -167,12 +167,19 @@
                 graph.model.on('selectNode', ({ target }) => {
                     pane2Container.style.display = 'unset';
                     pane3Container.style.display = 'none';
+                    curNode.position.x = target.data.x;
+                    curNode.position.y = target.data.y;
+                    curNode.label = target.data.label;
+                    curNode.size = target.data.size;
+                    curNode.color = target.data.color;
                     curNode.ref = target;
+                    pane2.refresh();
                 });
                 graph.model.on('selectEdge', ({ target }) => {
                     pane3Container.style.display = 'unset';
                     pane2Container.style.display = 'none';
                     curEdge.ref = target;
+                    pane3.refresh();
                 });
                 graph.model.on('clearSelect', () => {
                     curNode.ref = null;
@@ -180,25 +187,25 @@
                     pane2Container.style.display = 'none';
                     pane3Container.style.display = 'none';
                 });
-                graph.model.on('updateNode', ({ target }) => {
-                    if (curNode.ref && target.data.id === curNode.ref.data.id) {
-                        curNode.position.x = target.data.x;
-                        curNode.position.y = target.data.y;
-                        curNode.label = target.data.label;
-                        curNode.size = target.data.size;
-                        curNode.color = target.data.color;
-                        pane2.refresh();
-                    }
-                });
-                graph.model.on('updateEdge', ({ target }) => {
-                    if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
-                        curEdge.label = target.data.label;
-                        curEdge.labelColor = target.data.labelColor;
-                        curEdge.labelSize = target.data.labelSize;
-                        curEdge.color = target.data.color;
-                        pane3.refresh();
-                    }
-                });
+                // graph.model.on('updateNode', ({ target }) => {
+                //     if (curNode.ref && target.data.id === curNode.ref.data.id) {
+                //         curNode.position.x = target.data.x;
+                //         curNode.position.y = target.data.y;
+                //         curNode.label = target.data.label;
+                //         curNode.size = target.data.size;
+                //         curNode.color = target.data.color;
+                //         pane2.refresh();
+                //     }
+                // });
+                // graph.model.on('updateEdge', ({ target }) => {
+                //     if (curEdge.ref && target.data.id === curEdge.ref.data.id) {
+                //         curEdge.label = target.data.label;
+                //         curEdge.labelColor = target.data.labelColor;
+                //         curEdge.labelSize = target.data.labelSize;
+                //         curEdge.color = target.data.color;
+                //         pane3.refresh();
+                //     }
+                // });
                 loaderContainer.style.display = 'none';
             });
         }
@@ -211,6 +218,8 @@
                 loaderContainer.style.display = 'none';
             });
         }
+
+        const debounceRender = _.debounce(() => graph.renderer.render(graph.model), 500);
 
         const pane = new Tweakpane.Pane({
             container: document.getElementById('pane-container'),
@@ -269,37 +278,37 @@
             if (curNode.ref) {
                 curNode.ref.data.x = value.x;
                 curNode.ref.data.y = value.y;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane2.addInput(curNode, 'color', { label: '颜色' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.color = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane2.addInput(curNode, 'size', { min: 10, max: 30, label: '大小' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.size = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane2.addInput(curNode, 'label', { label: '文字' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.label = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane2.addInput(curNode, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelSize = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane2.addInput(curNode, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
             if (curNode.ref) {
                 curNode.ref.data.labelColor = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
 
@@ -310,25 +319,25 @@
         pane3.addInput(curEdge, 'label', { label: '文字' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.label = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane3.addInput(curEdge, 'labelSize', { min: 10, max: 30, step: 1, label: '文字大小' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.labelSize = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane3.addInput(curEdge, 'labelColor', { label: '文字颜色' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.labelColor = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
         pane3.addInput(curEdge, 'color', { label: '边颜色' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.color = value;
-                graph.renderer.render(graph.model);
+                debounceRender();
             }
         });
 
