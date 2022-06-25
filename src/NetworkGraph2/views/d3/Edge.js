@@ -88,11 +88,11 @@ function linkArc(d) {
         const theta = -Math.PI / 3;
         const r = getNodeSize(d.data.source);
         const j = new Vector2(Math.cos(theta) * r, Math.sin(theta) * r).add(source);
-        
+
         const angle = Math.PI / 12 * d.data.sameIndexCorrected;
         const start = j.clone().rotateAround(source, -angle);
         const end = j.clone().rotateAround(target, angle);
-        
+
         const l = 4 * r;
         const ratio = Math.cos(angle) * r / (Math.cos(angle) * r + l + d.data.sameIndexCorrected * 2 * r);
         const c1 = new Vector2(
@@ -130,7 +130,7 @@ function linkArc(d) {
         }
 
     }
-    
+
 };
 
 export default {
@@ -176,6 +176,8 @@ export default {
             .attr('display', datum.hideLabel === true ? 'none' : 'unset');
 
         selection.select('marker')
+            // .attr('refX', datum.target.x)
+            // .attr('refY', datum.target.y)
             .attr('fill', datum.selected ? datum.activeColor : datum.color);
 
         const textPathSelection = selection.select('textPath');
