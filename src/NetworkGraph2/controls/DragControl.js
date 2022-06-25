@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3';
-import * as d3 from 'd3';
+import * as d3 from 'd3-drag';
 
 export default class DragControl extends EventEmitter {
 
@@ -16,8 +16,20 @@ export default class DragControl extends EventEmitter {
         };
 
         const updatePositionEndRender = function(event, d) {
+            // 更新node
             d.data.x = event.x + deltaX;
             d.data.y = event.y + deltaY;
+            // 所有与node连接的边也需要更新
+            graph.model.traverse(elem => {
+                if (elem.type === 'edge') {
+                    if (elem.data.source.id === d.data.id) {
+                        elem.dirty = true;
+                    }
+                    if (elem.data.target.id === d.data.id) {
+                        elem.dirty = true;
+                    }
+                }
+            })
             graph.renderer.render(graph.model);
         };
 
@@ -26,7 +38,9 @@ export default class DragControl extends EventEmitter {
             .on('drag', updatePositionEndRender)
             .on('end', updatePositionEndRender);
 
-        graph.renderer.on('createdNode', (enter) => enter.call(d3Drag));
+        graph.renderer.on('renderElement', (enter) => {
+            if (enter.datum().type === 'node') enter.call(d3Drag);
+        });
     }
 
 }

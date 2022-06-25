@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3';
-import * as d3 from 'd3';
+import * as d3 from 'd3-zoom';
 
 export default class ZoomControl extends EventEmitter {
 
