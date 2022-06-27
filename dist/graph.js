@@ -5364,6 +5364,14 @@ class ZoomControl extends eventemitter3 {
     constructor(graph) {
         super();
 
+        const handleZoomstart = (e, d) => {
+            this.emit('zoomstart', e);
+        };
+
+        const handleZoomend = (e, d) => {
+            this.emit('zoomend', e);
+        };
+
         const rootSelection = graph.renderer.rootSelection;
         const wrapperSelection = rootSelection.select('g.canvas');
         const { width, height } = rootSelection.node().getBoundingClientRect();
@@ -5376,8 +5384,8 @@ class ZoomControl extends eventemitter3 {
                 wrapperSelection.attr('transform', transform);
                 this.emit('zoom', event);
             })
-            .on('start', event => this.emit('zoomstart', event))
-            .on('end', event => this.emit('zoomend', event));
+            .on('start', handleZoomstart)
+            .on('end', handleZoomend);
 
         rootSelection.call(d3Zoom);
         this.d3Zoom = d3Zoom;
@@ -5417,10 +5425,21 @@ class DragControl extends eventemitter3 {
             graph.renderer.render(graph.model);
         };
 
+        // let hideEdgeLabelWhenDrag = false;
+        const handleDragstart = (e, d) => {
+            this.emit('dragstart', e);
+            recordPosition(e, d);
+        };
+
+        const handleDragend = (e, d) => {
+            this.emit('dragend', e);
+            updatePositionEndRender(e, d);
+        };
+
         const d3Drag = drag()
-            .on('start', recordPosition)
+            .on('start', handleDragstart)
             .on('drag', updatePositionEndRender)
-            .on('end', updatePositionEndRender);
+            .on('end', handleDragend);
 
         graph.renderer.on('renderElement', (enter) => {
             if (enter.datum().type === 'node') enter.call(d3Drag);
@@ -5717,7 +5736,11 @@ class NetworkGraph {
         width = 300,
         height = 150,
         data,
-        layoutConfig
+        layoutConfig,
+        optimize = {
+            enable: false,
+            limit: 200
+        }
     }) {
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
@@ -5741,6 +5764,11 @@ class NetworkGraph {
             this.data(data);
             this.layout();
             this.render();
+        }
+
+        this._optimize = false;
+        if (optimize.enable) {
+            this.enableOptimize(optimize);
         }
     }
 
@@ -5792,6 +5820,46 @@ class NetworkGraph {
     toggleAllEdgeLabels(flag) {
         this.model.getEdges().forEach(edge => edge.data.hideLabel = !flag);
         this.renderer.render(this.model);
+    }
+
+    enableOptimize({ limit }) {
+        if (!this._optimize) {
+            let needHideEdge = false;
+            this._optimize = {
+                limit,
+                handle1: () => {
+                    const edgeCount = this.model.getEdges().length;
+                    if (edgeCount > this._optimize.limit) {
+                        needHideEdge = true;
+                        this.toggleAllEdges(false);
+                    }
+                },
+                handle2: () => {
+                    if (needHideEdge) {
+                        needHideEdge = false;
+                        this.toggleAllEdges(true);
+                    }
+                }
+            };
+        }
+
+        this._optimize.limit = limit;
+        
+        if (!this._optimize.enable) {
+            this.zoomControl.on('zoomstart', this._optimize.handle1);
+            this.zoomControl.on('zoomend', this._optimize.handle2);
+            this.dragControl.on('dragstart', this._optimize.handle1);
+            this.dragControl.on('dragend', this._optimize.handle2);
+            this._optimize.enable = true;
+        }
+    }
+
+    disableOptimize() {
+        this._optimize.enable = false;
+        this.zoomControl.off('zoomstart', this._optimize.handle1);
+        this.zoomControl.off('zoomend', this._optimize.handle2);
+        this.dragControl.off('dragstart', this._optimize.handle1);
+        this.dragControl.off('dragend', this._optimize.handle2);
     }
 
     destroy() {

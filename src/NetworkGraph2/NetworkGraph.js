@@ -16,7 +16,11 @@ export default class NetworkGraph {
         width = 300,
         height = 150,
         data,
-        layoutConfig
+        layoutConfig,
+        optimize = {
+            enable: false,
+            limit: 200
+        }
     }) {
         this.renderer = new D3Renderer();
         this.renderer.setSize(width, height);
@@ -40,6 +44,11 @@ export default class NetworkGraph {
             this.data(data);
             this.layout();
             this.render();
+        }
+
+        this._optimize = false;
+        if (optimize.enable) {
+            this.enableOptimize(optimize);
         }
     }
 
@@ -91,6 +100,46 @@ export default class NetworkGraph {
     toggleAllEdgeLabels(flag) {
         this.model.getEdges().forEach(edge => edge.data.hideLabel = !flag);
         this.renderer.render(this.model);
+    }
+
+    enableOptimize({ limit }) {
+        if (!this._optimize) {
+            let needHideEdge = false;
+            this._optimize = {
+                limit,
+                handle1: () => {
+                    const edgeCount = this.model.getEdges().length;
+                    if (edgeCount > this._optimize.limit) {
+                        needHideEdge = true;
+                        this.toggleAllEdges(false);
+                    }
+                },
+                handle2: () => {
+                    if (needHideEdge) {
+                        needHideEdge = false;
+                        this.toggleAllEdges(true);
+                    }
+                }
+            };
+        }
+
+        this._optimize.limit = limit;
+        
+        if (!this._optimize.enable) {
+            this.zoomControl.on('zoomstart', this._optimize.handle1);
+            this.zoomControl.on('zoomend', this._optimize.handle2);
+            this.dragControl.on('dragstart', this._optimize.handle1);
+            this.dragControl.on('dragend', this._optimize.handle2);
+            this._optimize.enable = true;
+        }
+    }
+
+    disableOptimize() {
+        this._optimize.enable = false;
+        this.zoomControl.off('zoomstart', this._optimize.handle1);
+        this.zoomControl.off('zoomend', this._optimize.handle2);
+        this.dragControl.off('dragstart', this._optimize.handle1);
+        this.dragControl.off('dragend', this._optimize.handle2);
     }
 
     destroy() {

@@ -33,10 +33,21 @@ export default class DragControl extends EventEmitter {
             graph.renderer.render(graph.model);
         };
 
+        // let hideEdgeLabelWhenDrag = false;
+        const handleDragstart = (e, d) => {
+            this.emit('dragstart', e);
+            recordPosition(e, d);
+        };
+
+        const handleDragend = (e, d) => {
+            this.emit('dragend', e);
+            updatePositionEndRender(e, d);
+        };
+
         const d3Drag = d3.drag()
-            .on('start', recordPosition)
+            .on('start', handleDragstart)
             .on('drag', updatePositionEndRender)
-            .on('end', updatePositionEndRender);
+            .on('end', handleDragend);
 
         graph.renderer.on('renderElement', (enter) => {
             if (enter.datum().type === 'node') enter.call(d3Drag);

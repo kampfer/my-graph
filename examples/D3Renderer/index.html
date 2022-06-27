@@ -117,7 +117,9 @@
             linkDistance: 300,
             manyBodyStrength: -500,
             manyBodyTheta: 0.9,
-            centerStrength: 0.05
+            centerStrength: 0.05,
+            optimize: false,
+            limit: 100
         };
 
         const curNode = {
@@ -162,6 +164,10 @@
                         yStrength: settings.centerStrength,
                         manyBodyStrength: settings.manyBodyStrength,
                         manyBodyTheta: settings.manyBodyTheta
+                    },
+                    optimize: {
+                        enable: settings.optimize,
+                        limit: settings.limit
                     }
                 });
                 graph.model.on('selectNode', ({ target }) => {
@@ -270,6 +276,20 @@
         folder3.addSeparator();
         folder3.addButton({title: 'layout'}).on('click', rerender);
 
+        const folder4 = pane.addFolder({ title: '性能' });
+        folder4.addInput(settings, 'optimize', { label: '钳制边' })
+            .on('change', ({ value }) => {
+                if (value) {
+                    graph.enableOptimize({ limit: settings.limit });
+                } else {
+                    graph.disableOptimize();
+                }
+            });
+        folder4.addInput(settings, 'limit', { label: '阈值' })
+            .on('change', ({ value }) => {
+                if (settings.optimize) graph.enableOptimize({ limit: settings.limit });
+            });
+
         const pane2 = new Tweakpane.Pane({
             container: document.getElementById('pane-container2'),
             title: 'node属性'
@@ -315,7 +335,7 @@
         const pane3 = new Tweakpane.Pane({
             container: document.getElementById('pane-container3'),
             title: 'edge属性'
-        });    
+        });
         pane3.addInput(curEdge, 'label', { label: '文字' }).on('change', ({ value }) => {
             if (curEdge.ref) {
                 curEdge.ref.data.label = value;

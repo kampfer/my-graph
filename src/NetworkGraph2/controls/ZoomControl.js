@@ -6,6 +6,14 @@ export default class ZoomControl extends EventEmitter {
     constructor(graph) {
         super();
 
+        const handleZoomstart = (e, d) => {
+            this.emit('zoomstart', e);
+        };
+
+        const handleZoomend = (e, d) => {
+            this.emit('zoomend', e);
+        };
+
         const rootSelection = graph.renderer.rootSelection;
         const wrapperSelection = rootSelection.select('g.canvas');
         const { width, height } = rootSelection.node().getBoundingClientRect();
@@ -18,8 +26,8 @@ export default class ZoomControl extends EventEmitter {
                 wrapperSelection.attr('transform', transform);
                 this.emit('zoom', event);
             })
-            .on('start', event => this.emit('zoomstart', event))
-            .on('end', event => this.emit('zoomend', event));
+            .on('start', handleZoomstart)
+            .on('end', handleZoomend);
 
         rootSelection.call(d3Zoom);
         this.d3Zoom = d3Zoom;
